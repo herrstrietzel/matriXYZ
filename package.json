@@ -30,7 +30,8 @@
   "keywords": [
     "matrix",
     "3D-matrix",
-    "2D-projection"
+    "2D-projection",
+    "SVG"
   ],
   "author": "herrstrietzel",
   "license": "MIT",
