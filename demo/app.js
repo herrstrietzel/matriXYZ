@@ -56,7 +56,7 @@ function update(settings) {
     /**
      * create matrix
      */
-    let matrix = new MatriXYZ.Mtx(transformOptions);
+    let matrix = new MtrXYZ.Mtx(transformOptions);
 
 
     //console.log(matrix);
@@ -145,7 +145,7 @@ function update(settings) {
     let d; 
 
     if(isPathData){
-        let {convertPathData, pathDataToD} = MatriXYZ;
+        let {convertPathData, pathDataToD} = MtrXYZ;
         let pathDataOpt = convertPathData(pathDataTransformed, {decimals:decimals, toRelative:toRelative, toShorthands:toShorthands, arcToCubic:arcToCubic})
         d = pathDataToD(pathDataOpt)
     }

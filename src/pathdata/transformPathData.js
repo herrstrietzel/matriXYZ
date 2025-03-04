@@ -1,12 +1,12 @@
 //import { parse, convertPathData } from './pathdata/parse';
 //import { canFlattenTo2D, flattenTo2D } from '../getMatrix';
 //import { canFlattenTo2D, flattenTo2D } from '../getMatrix';
-//import * as MatriXYZ from 'MatriXYZ';
-//import {transformPoint3D, transformPoint2D, canFlattenTo2D, flattenTo2D } from 'MatriXYZ';
+//import * as MtrXYZ from 'MtrXYZ';
+//import {transformPoint3D, transformPoint2D, canFlattenTo2D, flattenTo2D } from 'MtrXYZ';
 
 
-MatriXYZ.Mtx.prototype.transformPathData = function (pts, decimals=8) {
-    let ptsT = MatriXYZ.transformPathData(pts, this.matrix, this.perspectiveOrigin, this.perspective, decimals)
+MtrXYZ.Mtx.prototype.transformPathData = function (pts, decimals=8) {
+    let ptsT = MtrXYZ.transformPathData(pts, this.matrix, this.perspectiveOrigin, this.perspective, decimals)
     this.ptsT = ptsT
     return ptsT;
 }
@@ -17,10 +17,10 @@ MatriXYZ.Mtx.prototype.transformPathData = function (pts, decimals=8) {
  */
 export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, y: 0 }, perspective = Infinity, decimals = -1) {
 
-    pathData = Array.isArray(pathData) ? pathData : MatriXYZ.parse(pathData).pathData;
+    pathData = Array.isArray(pathData) ? pathData : MtrXYZ.parse(pathData).pathData;
 
     // normalize
-    pathData = MatriXYZ.convertPathData(pathData, {toAbsolute:true, toLonghands:true})
+    pathData = MtrXYZ.convertPathData(pathData, {toAbsolute:true, toLonghands:true})
 
     // new pathdata
     let pathDataTrans = [];
@@ -29,9 +29,9 @@ export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, 
 
 
     //check if 3D matrix could be expressed by a 2D one
-    if (is3D) canFlatten = MatriXYZ.canFlattenTo2D(matrix, perspective);
+    if (is3D) canFlatten = MtrXYZ.canFlattenTo2D(matrix, perspective);
     if (canFlatten) {
-        is3D = false; matrix = MatriXYZ.flattenTo2D(matrix, perspective);
+        is3D = false; matrix = MtrXYZ.flattenTo2D(matrix, perspective);
     }
 
     //console.log(matrix);
@@ -40,7 +40,7 @@ export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, 
     // convert arcs for 3D transforms
     if (is3D) {
         let options = { arcToCubic: true }
-        pathData = MatriXYZ.convertPathData(pathData, options)
+        pathData = MtrXYZ.convertPathData(pathData, options)
     }
 
 
@@ -140,7 +140,7 @@ export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, 
         * parametrize arc command 
         * to get the actual arc params
         */
-        let arcData = MatriXYZ.svgArcToCenterParam(
+        let arcData = MtrXYZ.svgArcToCenterParam(
             p0.x,
             p0.y,
             values[0],
@@ -155,7 +155,7 @@ export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, 
         let { a, b, c, d, e, f } = matrix;
 
         let ellipsetr = transformEllipse2D(rx, ry, angle, matrix);
-        let p = MatriXYZ.transformPoint2D({ x: x, y: y }, matrix);
+        let p = MtrXYZ.transformPoint2D({ x: x, y: y }, matrix);
         //let p = transformPoint2D({ x: x, y: y }, matrix);
 
         // adjust sweep if flipped
@@ -220,10 +220,10 @@ export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, 
                 // all other point based commands
                 if (values.length) {
                     for (let i = 0; i < values.length; i += 2) {
-                        let ptTrans = !is3D ? MatriXYZ.transformPoint2D(
+                        let ptTrans = !is3D ? MtrXYZ.transformPoint2D(
                             { x: com.values[i], y: com.values[i + 1] },
                             matrix
-                        ) : MatriXYZ.transformPoint3D(
+                        ) : MtrXYZ.transformPoint3D(
                             { x: com.values[i], y: com.values[i + 1] },
                             matrix, perspectiveOrigin, perspective
                         );

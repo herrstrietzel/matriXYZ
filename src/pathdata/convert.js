@@ -170,7 +170,6 @@ export function pathDataQuadraticToCubic(pathData) {
 }
 
 
-
 /**
  * convert quadratic commands to cubic
  */

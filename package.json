@@ -1,22 +1,22 @@
 {
-  "name": "matrixyz",
+  "name": "MtrXYZ",
   "version": "0.9.1",
   "type": "module",
-  "main": "dist/MatriXYZ.cjs",  
-  "module": "dist/MatriXYZ.mjs",  
+  "main": "dist/MtrXYZ.cjs",  
+  "module": "dist/MtrXYZ.mjs",  
   "exports": {
     ".": {
-      "import": "./dist/MatriXYZ.mjs",
-      "require": "./dist/MatriXYZ.cjs"
+      "import": "./dist/MtrXYZ.mjs",
+      "require": "./dist/MtrXYZ.cjs"
     },
     "./addon": {
-      "import": "./dist/MatriXYZ_pathdata.mjs",
-      "require": "./dist/MatriXYZ_pathdata.cjs"
+      "import": "./dist/MtrXYZ_pathdata.mjs",
+      "require": "./dist/MtrXYZ_pathdata.cjs"
     }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/herrstrietzel/matriXYZ.git"
+    "url": "git+https://github.com/herrstrietzel/MtrXYZ.git"
   },
   "scripts": {
     "build": "rollup -c",
