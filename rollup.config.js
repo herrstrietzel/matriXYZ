@@ -1,6 +1,8 @@
 import terser from '@rollup/plugin-terser';
 
 const libName = 'MatriXYZ';
+//const scriptname = 'matrixyz';
+const scriptname = libName;
 
 export default [
     // Main library (MatriXYZ)
@@ -8,22 +10,22 @@ export default [
         input: 'src/index.js',
         output: [
             {
-                file: `dist/${libName}.js`,  // UMD for browsers
+                file: `dist/${scriptname}.js`,  // UMD for browsers
                 format: 'umd',
                 name: `${libName}`
             },
             {
-                file: `dist/${libName}.min.js`,  // Minified UMD
+                file: `dist/${scriptname}.min.js`,  // Minified UMD
                 format: 'umd',
                 name: `${libName}`,
                 plugins: [terser()]
             },
             {
-                file: `dist/${libName}.mjs`,  // ESM for tree-shakable imports
+                file: `dist/${scriptname}.mjs`,  // ESM for tree-shakable imports
                 format: 'esm'
             },
             {
-                file: `dist/${libName}.cjs`,  // CommonJS for Node.js require()
+                file: `dist/${scriptname}.cjs`,  // CommonJS for Node.js require()
                 format: 'cjs'
             }
         ]
@@ -34,7 +36,7 @@ export default [
         external: [libName], 
         output: [
             {
-                file: `dist/${libName}_pathdata.js`,
+                file: `dist/${scriptname}_pathdata.js`,
                 format: 'umd',
                 name: `${libName}`,
                 extend: true,
@@ -43,7 +45,7 @@ export default [
                 }
             },
             {
-                file: `dist/${libName}_pathdata.min.js`,
+                file: `dist/${scriptname}_pathdata.min.js`,
                 format: 'umd',
                 name: `${libName}`,
                 extend: true,
@@ -53,11 +55,11 @@ export default [
                 plugins: [terser()]
             },
             {
-                file: `dist/${libName}_pathdata.mjs`, // ESM
+                file: `dist/${scriptname}_pathdata.mjs`, // ESM
                 format: 'esm'
             },
             {
-                file: `dist/${libName}_pathdata.cjs`, // CommonJS
+                file: `dist/${scriptname}_pathdata.cjs`, // CommonJS
                 format: 'cjs'
             }
         ]
