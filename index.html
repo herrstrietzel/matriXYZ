@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MatriXYZ</title>
+    <meta name="description" content="A JS library for 3D and 2D matrix transformations">
+
+
+    <link rel="preload" href="demo/css/style.css" as="style" />
+    <link rel="preload" href="demo/css/custom.css" as="style" />
+    <link rel="preload" href="demo/fonts/Fira-Sans/FiraSans_latin_400.woff2" as="font" crossOrigin="anonymous" />
+    <link rel="preload" href="demo/fonts/Fira-Sans/FiraSans_latin_700.woff2" as="font" crossOrigin="anonymous" />
+
+    <!--UI CSS boilerplate-->
+    <link id="cssMain" rel="stylesheet" href="demo/css/style.css">
+    <link rel="stylesheet" href="demo/style_app.css">
+
+    <link rel="stylesheet" href="demo/lib/ps-icons/ps-icons.css">
+    <link rel="stylesheet" href="demo/lib/details-enhanced/details-enhanced.css">
+    <link rel="stylesheet" href="demo/lib/ps-style-inputs/ps-style-inputs.css">
+
+
+
+    <!-- UI assets -->
+    <script src="demo/definefields.js" defer></script>
+    <script src="demo/lib/ps-icons/ps-icons.js" defer></script>
+    <script src="demo/lib/ps-style-inputs/ps-style-inputs.js" defer></script>
+
+    <!-- 
+        <script src="demo/lib/ps-textarea-tools/ps-textarea-tools.js" defer></script>
+
+    -->
+    <script src="demo/lib/ps-generate-inputs/ps-generate-inputs.js" defer></script>
+
+
+    <!-- path data parser -->
+    <!-- 
+
+        <script src="https://cdn.jsdelivr.net/npm/svg-parse-path-normalized@latest/js/pathDataParseNormalized.min.js"></script>
+        <script src="https://www.unpkg.com/svg-parse-path-normalized@latest/js/pathDataConvert.js"></script>
+
+
+    -->
+
+
+
+
+    <!--matrixYZ-->
+    <script src="dist/matriXYZ.js" defer></script>
+    <script src="dist/matriXYZ_pathdata.js" defer></script>
+    <script src="demo/app.js"defer></script>
+
+
+
+</head>
+
+
+
+<body id="body" class="body details-plus init hide-sidebar hide-help hide-info hide-preview hide-footer scrollbar" data-icon-sprite="demo/lib/ps-icons/ps-icons.svg">
+
+
+    <!-- init grid -->
+    <div class="grd-main2 grid-area-sidebar  --gap-1em ">
+
+        <!-- toolbar/settings  -->
+        <aside class="sidebar grid-area-sidebar mutation-listen">
+            <section class="sidebar-wrp pst-stc pdd-1em --pdd-top scroll-content scrollbar" id="optionsWrp">
+            </section>
+        </aside>
+
+        <aside class="sidebar grid-area-sidebar2 mutation-listen">
+            <section class="sidebar-wrp --pst-stc pdd-1em --pdd-top scroll-content scrollbar" id="optionsWrp2">
+            </section>
+        </aside>
+
+        <main class="main grid-area-main layout">
+
+            <!-- gihub link -->
+            <header>
+                <a class="lnk-github" href="https://github.com/herrstrietzel/matriXYZ" title="See github repository">
+                    <span data-icon="github-outine"></span>
+                </a>
+            </header>
+
+            <div id="rel" class="preview rel pnt-evn-non">
+
+                <svg id="svg" viewBox="-100 -100 300 300">
+                    <path id="path" d="" fill="none" stroke="red" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+
+
+            </div>
+        </main>
+    </div>
+
+
+</body>
+</html>

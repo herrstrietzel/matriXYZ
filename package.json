@@ -1,0 +1,41 @@
+{
+  "name": "matrixyz",
+  "version": "0.9.1",
+  "type": "module",
+  "main": "dist/MatriXYZ.cjs",  
+  "module": "dist/MatriXYZ.mjs",  
+  "exports": {
+    ".": {
+      "import": "./dist/MatriXYZ.mjs",
+      "require": "./dist/MatriXYZ.cjs"
+    },
+    "./addon": {
+      "import": "./dist/MatriXYZ_pathdata.mjs",
+      "require": "./dist/MatriXYZ_pathdata.cjs"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/herrstrietzel/matriXYZ.git"
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c --watch"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^3.29.5",
+    "rollup-plugin-concat": "^1.0.4"
+  },
+  "keywords": [
+    "matrix",
+    "3D-matrix",
+    "2D-projection"
+  ],
+  "author": "herrstrietzel",
+  "license": "MIT",
+  "description": "A helper for 3D and 2D matrix transformations",
+  "dependencies": {
+    "terser": "^5.39.0"
+  }
+}
