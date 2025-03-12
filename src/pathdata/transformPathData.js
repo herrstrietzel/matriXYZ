@@ -161,8 +161,7 @@ export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, 
          */
         let ptR = mtrXYZ.getPointOnEllipse(cx, cy, rx, ry, (startAngle + deltaAngle * 0.5), xAxisRotationRad)
 
-        
-
+    
         // transform reference point
         ptR = mtrXYZ.transformPoint(ptR, matrix, perspectiveOrigin, perspective);
 

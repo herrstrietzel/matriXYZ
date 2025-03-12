@@ -147,8 +147,6 @@ export function transformPoint3D(pt, matrix, perspectiveOrigin = { x: 0, y: 0 },
     return ptTrans;
 }
 
-
-
 // transform point by 2d matrix
 export function transformPoint2D(pt, matrix, decimals = -1) {
     let { a, b, c, d, e, f } = matrix;
