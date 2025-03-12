@@ -1,22 +1,22 @@
 {
   "name": "mtrxyz",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "type": "module",
-  "main": "dist/MtrXYZ.cjs",  
-  "module": "dist/MtrXYZ.mjs",  
+  "main": "dist/mtrXYZ.cjs",  
+  "module": "dist/mtrXYZ.mjs",  
   "exports": {
     ".": {
-      "import": "./dist/MtrXYZ.mjs",
-      "require": "./dist/MtrXYZ.cjs"
+      "import": "./dist/mtrXYZ.mjs",
+      "require": "./dist/mtrXYZ.cjs"
     },
     "./addon": {
-      "import": "./dist/MtrXYZ_pathdata.mjs",
-      "require": "./dist/MtrXYZ_pathdata.cjs"
+      "import": "./dist/mtrXYZ_pathdata.mjs",
+      "require": "./dist/mtrXYZ_pathdata.cjs"
     }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/herrstrietzel/MtrXYZ.git"
+    "url": "git+https://github.com/herrstrietzel/mtrXYZ.git"
   },
   "scripts": {
     "build": "rollup -c",

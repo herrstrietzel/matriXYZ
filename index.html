@@ -48,17 +48,35 @@
 
 
     <!--matrixYZ-->
-    <script src="./dist/MtrXYZ.js" defer></script>
-    <script src="./dist/MtrXYZ_pathdata.js" defer></script>
-    <script src="./demo/app.js"defer></script>
+    <script src="./dist/mtrXYZ.js" defer></script>
+    <script src="./dist/mtrXYZ_pathdata.js" defer></script>
+    <script src="./demo/app.js" defer></script>
 
+
+    <style>
+        .trans,
+        .trans2 {
+            display: inline-block;
+            width:33%;
+            aspect-ratio: 1;
+        }
+
+        .trans {
+            outline: 2px solid red
+        }
+
+        .trans2 {
+            outline: 1px solid green
+        }
+    </style>
 
 
 </head>
 
 
 
-<body id="body" class="body details-plus init hide-sidebar hide-help hide-info hide-preview hide-footer scrollbar" data-icon-sprite="demo/lib/ps-icons/ps-icons.svg">
+<body id="body" class="body details-plus init hide-sidebar hide-help hide-info hide-preview hide-footer scrollbar"
+    data-icon-sprite="demo/lib/ps-icons/ps-icons.svg">
 
 
     <!-- init grid -->
@@ -88,6 +106,7 @@
 
                 <svg id="svg" viewBox="-100 -100 300 300">
                     <path id="path" d="" fill="none" stroke="red" stroke-linecap="round" stroke-linejoin="round" />
+                    <g id="markers" ></g>
                 </svg>
 
 
@@ -97,4 +116,5 @@
 
 
 </body>
+
 </html>

@@ -358,6 +358,35 @@ function bindToolbar() {
 }
 
 
+/**
+ * add triple click custom event
+ */
+
+function registerTripleClickEvent() {
+    document.addEventListener("click", (e) => {
+        const target = e.target;
+        if (!target._tripleClickData) {
+            target._tripleClickData = { count: 0, timer: null };
+        }
+
+        const data = target._tripleClickData;
+        data.count++;
+
+        if (data.timer) clearTimeout(data.timer);
+
+        data.timer = setTimeout(() => {
+            if (data.count === 3) {
+                const tripleClickEvent = new CustomEvent("tripleClick", { bubbles: true, cancelable: true });
+                target.dispatchEvent(tripleClickEvent);
+            }
+            data.count = 0; // Reset after timeout
+        }, 300); // Typical double-click timeout
+    });
+}
+
+// Initialize the triple click listener globally
+registerTripleClickEvent();
+
 
 /**
  * add mouse controls
@@ -365,95 +394,161 @@ function bindToolbar() {
  */
 function enhanceNumberFields() {
     let numberFields = document.querySelectorAll("input[type=number]");
-
-    console.log('enhanceNumberFields');
-
-
-    for(let i=0,len=numberFields.length; len&&i<len; i++){
-
-        let input = numberFields[i];
-
-        //wrap
-        let wrap = input.closest('.wrap-number');
-
-        // already wrapped
-        if(wrap){
-            continue;
+  
+    // Initialize the triple click listener globally
+    const registerTripleClickEvent=()=>{
+      // Store click counts and timeouts for each element
+      const clickCounts = new WeakMap();
+      const timeouts = new WeakMap();
+  
+      // Define the tripleClick event
+      const tripleClickEvent = new Event("tripleClick", { bubbles: true });
+  
+      // Override the addEventListener method to handle tripleClick
+      const originalAddEventListener = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function (
+        type,
+        listener,
+        options
+      ) {
+        if (type === "tripleClick") {
+          // Set up triple click detection for this element
+          clickCounts.set(this, 0);
+  
+          // Listen for clicks on the element
+          originalAddEventListener.call(this, "click", () => {
+            let count = clickCounts.get(this) || 0;
+            count++;
+  
+            if (count === 3) {
+              // Dispatch the tripleClick event
+              this.dispatchEvent(tripleClickEvent);
+              count = 0; // Reset the count
+            }
+  
+            clickCounts.set(this, count);
+  
+            // Reset the count if the timeout expires
+            clearTimeout(timeouts.get(this));
+            timeouts.set(
+              this,
+              setTimeout(() => {
+                clickCounts.set(this, 0);
+              }, 300)
+            ); // Adjust the timeout duration (in milliseconds) as needed
+          });
         }
+  
+        // Call the original addEventListener for other events
+        originalAddEventListener.call(this, type, listener, options);
+      };
+    }
+    registerTripleClickEvent();
+  
+    function safeCalculation(input) {
+      const cleanValue = input.value
+        .replace(/,/g, ".")
+        .replace(/[^0-9+\-*/.\se]/g, "");
+  
+      try {
+        const result = Function(`'use strict'; return (${cleanValue})`)();
+        if (!isNaN(result)) {
+          input.value = result;
+        }
+      } catch (e) {
+        console.warn("Invalid calculation");
+      }
+    }
+  
+    for (let i = 0, len = numberFields.length; len && i < len; i++) {
+      let input = numberFields[i];
+  
+      let wrap = input.closest(".wrap-number");
+      if (wrap) continue;
+  
+      // convert type number to text
+      input.type = "text";
+      //input.pattern = "[0-9+-/*eE.]+";
+      input.title = "Use Mousewheel or arrow keys to change values";
+      input.classList.add('input-number')
+  
+  
+      //let { min, max, step } = input.dataset;
+      let min = input.min ? +input.min : Infinity;
+      let max = input.max ? +input.max : Infinity;
+      let step = input.step ? +input.step : 0.1;
+  
+      input.addEventListener("change", () => safeCalculation(input));
+  
+      input.addEventListener("keyup", (e) => {
+        let val = +input.value;
+        let newVal = val;
+        let key = e.key;
+  
+        if (
+          e.keyCode == 38 ||
+          e.keyCode == 39 ||
+          e.keyCode == 40 ||
+          e.keyCode == 37
+        ) {
+          // up or right arrow = increase
+          if (e.keyCode == 38 || e.keyCode == 39) {
+            newVal += step;
+          }
+          // down or left arrow = decrease
+          else if (e.keyCode == 40 || e.keyCode == 37) {
+            newVal -= step;
+          }
+  
+          if (newVal < min) newVal = min;
+          if (newVal > max) newVal = max;
+          input.value = +newVal.toFixed(8);
+        }
+      });
+  
+      //reset to default
+      input.addEventListener("tripleClick", () => {
+        input.value = +input.getAttribute("value");
+        //console.log("reset");
+        input.dispatchEvent(new Event('input'))
+      });
+  
 
-        // create wrap
-        /*
-        wrap = document.createElement('div')
-        wrap.classList.add('wrap-number', 'pst-rlt', 'dsp-inl-blc');
-        input.parentNode.insertBefore(wrap, input);
 
-        let tooltip = document.createElement('div');
-        tooltip.classList.add('tooltip-number', 'pst-abs', '--btt-1em');
-        tooltip.innerHTML=`&lt;&minus; &minus;&gt;`
-        wrap.append(input, tooltip)
-        */
-
-        input.title = 'Move mouse or use Mousewheel to change values'
-
-
-        let isDragging = false;
-        let startX, startValue;
-
-        let { min, max, step } = input;
-        min = !isNaN(min) ? +min : min;
-        max = !isNaN(max) && max !== "" ? +max : Infinity;
-        step = !isNaN(step) && step !== "" ? +step : 1;
-        //console.log(min, max, step);
-
-
-        input.addEventListener("wheel", (e) => {
-
-            let offY = e.deltaY * 0.1;
-            offY = +(Math.round(offY / step) * step).toFixed(8);
-            let newVal = +input.value + offY;
+      input.addEventListener("wheel", (e) => {
+        if (document.activeElement === input) {
+            e.preventDefault(); // Prevent page/parent scrolling
+            let offY = e.deltaY * 0.05;
+            let val = +input.value;
+            offY = Math.round(offY / step) * step;
+            let newVal = +(val - offY).toFixed(8);
+    
+            if (newVal < min) newVal = min;
+            if (newVal > max) newVal = max;
             input.value = newVal;
+
             input.dispatchEvent(new Event('input'))
-
-        })
-
-        input.addEventListener("mousedown", (e) => {
-            isDragging = true;
-            startX = e.clientX;
-            startValue = +input.value || 0;
-
-            const onMouseMove = (e) => {
-                if (isDragging) {
-                    let diff = (e.clientX - startX) / 10;
-                    let newVal = startValue + diff;
-                    newVal = +(Math.round(newVal / step) * step).toFixed(8);
-
-                    if (newVal < min) newVal = min;
-                    if (newVal > max) newVal = max;
-                    input.value = newVal;
-                    input.dispatchEvent(new Event('input'))
-                }
-            };
-
-            // reset on double click
-            input.addEventListener("dblclick", e => {
-                input.value = +input.getAttribute('value')
-                input.dispatchEvent(new Event('input'))
-            });
+        }
+    });
+    
 
 
-            const onMouseUp = () => {
-                isDragging = false;
-                document.removeEventListener("mousemove", onMouseMove);
-                document.removeEventListener("mouseup", onMouseUp);
-            };
+    /*
+      input.addEventListener("wheel", (e) => {
+        let offY = e.deltaY * 0.05;
+        let val = +input.value;
+        offY = Math.round(offY / step) * step;
+        let newVal = +(val - offY).toFixed(8);
+  
+        if (newVal < min) newVal = min;
+        if (newVal > max) newVal = max;
+        input.value = newVal;
+      });
+      */
 
-            document.addEventListener("mousemove", onMouseMove);
-            document.addEventListener("mouseup", onMouseUp);
-        });
-    };
-}
 
-
+    }
+  }
 
 
 /**

@@ -22,13 +22,67 @@ let settings
 
     
     document.addEventListener('settingsChange', () => {
-        console.log('Data changed:', settings);
+        //console.log('Data changed:', settings);
         update(settings)
     });
     
 
 
 })();
+
+
+
+
+
+
+// Example usage:
+let div = document.createElement('div')
+// ;
+let cssTransform = "transform: matrix(1.2, 0.2, -1, 0.9, 0, 20) matrix3d(-0.6, 1.34788, 0, 0, -2.34788, -0.6, 0, 0, 0, 0, 1, 0, 0, 0, 10, 1) rotate(30deg) scale(2, 1.5) translate(50px, 100px) rotate3d(1, 1, 1, 45deg) rotateX(-0.5turn);transform-origin:2px 4px; perspective:150px; perspective-origin:10px 12px";
+
+cssTransform = "transform:translate(0px, 0px) translateZ(0px)  rotateX(0deg) rotateY(0deg) rotateZ(0deg)  skewX(20deg) skewY(20deg) scale3D(0.5, 0.25, 1) ";
+
+//scale3D(1, 1, 1)
+//scale3D(1.5, 2, 1.66)
+//scale3D(0.5, 1, 0.5)
+//skewX(12deg) skewY(33deg)
+
+//div.style.transform=cssTransform;
+div.style=cssTransform;
+div.classList.add('trans')
+document.body.append(div)
+let m = window.getComputedStyle(div).transform;
+let parsedTransform = mtrXYZ.parseCSSTransform(cssTransform);
+
+//console.log('parsedTransform', parsedTransform);
+//console.log('parsed:', m);
+
+let matrix3D = new mtrXYZ.Mtx(cssTransform);
+//console.log( Object.values(matrix3D.matrix).map(val=>{return+val.toFixed(5)}), 'cssMatrix', m );
+
+let transformDecomp = mtrXYZ.qrDecomposeMatrix3D(matrix3D.matrix)
+
+
+// consolidated
+let newCss = transformDecomp.cssTransform
+let div2 = document.createElement('div')
+div2.style.transform=newCss;
+div2.classList.add('trans2')
+
+document.body.append(div2)
+let m2 = window.getComputedStyle(div2).transform;
+
+
+//console.log('transformDecomp',m2, transformDecomp);
+
+
+
+
+
+
+
+
+
 
 
 
@@ -56,7 +110,7 @@ function update(settings) {
     /**
      * create matrix
      */
-    let matrix = new MtrXYZ.Mtx(transformOptions);
+    let matrix = new mtrXYZ.Mtx(transformOptions);
 
 
     //console.log(matrix);
@@ -126,6 +180,8 @@ function update(settings) {
 
     //let decimals = 3
     let {decimals, toRelative,  toShorthands, arcToCubic} = settings;
+    let {parse, convertPathData, pathDataToD} = mtrXYZ;
+    let pathData;
 
 
     // transform points
@@ -134,8 +190,15 @@ function update(settings) {
 
     if(points){
         if(isPathData){
-            //console.log(points);
-            pathDataTransformed = matrix.transformPathData(points, decimals)
+
+            // parse to array
+            pathData = parse(points).pathData;
+
+            // optionally convert before to cubics
+            if(arcToCubic){
+                pathData = convertPathData(pathData, {arcToCubic:true})
+            }
+            pathDataTransformed = matrix.transformPathData(pathData)
         }else{
             ptsTransformed = matrix.transformPoints(points, decimals)
         }
@@ -145,9 +208,8 @@ function update(settings) {
     let d; 
 
     if(isPathData){
-        let {convertPathData, pathDataToD} = MtrXYZ;
         let pathDataOpt = convertPathData(pathDataTransformed, {decimals:decimals, toRelative:toRelative, toShorthands:toShorthands, arcToCubic:arcToCubic})
-        d = pathDataToD(pathDataOpt)
+        d = pathDataToD(pathDataOpt, 2)
     }
     
     else if(isPointArray){

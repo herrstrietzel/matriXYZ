@@ -37,52 +37,6 @@ export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, 
 
     //console.log(matrix);
 
-    /**
-     * detect large arc based on
-     * transformed arc properties
-     */
-    const detectLargeArc = (cnt, p0, ptR, p, sweep) => {
-
-        const getAngle = (cnt, pt) => Math.atan2(pt.y - cnt.y, pt.x - cnt.x);
-
-        // Identify points based on sweep
-        let ptStart = sweep ? p0 : p;
-        let ptEnd = sweep ? p : p0;
-
-        // Calculate angles
-        let angleStart = getAngle(cnt, ptStart);
-        let angleEnd = getAngle(cnt, ptEnd);
-        let angleMid = getAngle(cnt, ptR);
-
-        // Normalize angles to [0, 2π) for consistent logic
-        angleStart = (angleStart + Math.PI * 2) % (Math.PI * 2);
-        angleEnd = (angleEnd + Math.PI * 2) % (Math.PI * 2);
-        angleMid = (angleMid + Math.PI * 2) % (Math.PI * 2);
-
-        // Correct angle ranges using angleMid as reference
-        if (
-            !(angleStart < angleMid && angleMid < angleEnd) &&
-            !(angleStart > angleMid && angleMid > angleEnd)
-        ) {
-            // Adjust angles for proper continuity
-            if (angleEnd < angleStart) {
-                angleEnd += Math.PI * 2;
-            } else {
-                angleStart += Math.PI * 2;
-            }
-        }
-
-        // Calculate delta angle
-        let deltaAngle = angleEnd - angleStart;
-
-
-        return {
-            deltaAngle: deltaAngle,
-            largeArc: Math.abs(deltaAngle) > Math.PI ? 1 : 0
-        };
-    }
-
-
 
     /**
      * transform arc 
@@ -132,12 +86,106 @@ export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, 
         }
 
         // extract arc data properties
-        let { rx, ry, cx, cy, startAngle, deltaAngle } = arcData;
+        let { rx, ry, cx, cy, startAngle, endAngle, deltaAngle } = arcData;
+
+
+        // original area between center and start/end points - used for sweep corrections
+        let area = mtrXYZ.getPolygonArea([p0, { x: cx, y: cy }, p]);
+
+        /**
+         * get actual delta angle
+         * to adjust sweep and large arc
+         */
+
+        function getDeltaAndSweep(p0, cx, cy, p, sweep, largeArc) {
+            const getAngle = (cx, cy, x, y) => Math.atan2(y - cy, x - cx);
+
+            /*
+            // Render points for visualization
+            */
+            //mtrXYZ.renderPoint(markers, [cx, cy], 'magenta');
+            //mtrXYZ.renderPoint(markers, p0, 'green', '2%');
+            //mtrXYZ.renderPoint(markers, p, 'cyan', '1.5%');
+
+
+
+            // Get raw angles (negative values allowed)
+            let startAngle = sweep ? getAngle(cx, cy, p0.x, p0.y) : getAngle(cx, cy, p.x, p.y);
+            let endAngle = sweep ? getAngle(cx, cy, p.x, p.y) : getAngle(cx, cy, p0.x, p0.y);
+
+            //let startAngle = getAngle(cx, cy, p0.x, p0.y) ;
+            //let endAngle = getAngle(cx, cy, p.x, p.y);
+
+
+            // Normalize angles to [0, 2π) by adding 2π if negative
+            startAngle = startAngle < 0 ? startAngle + Math.PI * 2 : startAngle;
+            endAngle = endAngle < 0 ? endAngle + Math.PI * 2 : endAngle;
+
+            if (startAngle > endAngle) {
+                //endAngle += Math.PI * 2
+                //console.log('adj pos', startAngle*180/Math.PI, endAngle*180/Math.PI);
+            }
+
+
+            console.log('angles', sweep, startAngle, endAngle);
+            // Adjust delta angle based on drawing direction
+            /*
+            if (!sweep && endAngle > startAngle) {
+                //console.log('adj neg');
+                endAngle -= Math.PI * 2
+            }
+
+            if (sweep && startAngle > endAngle) {
+                //console.log('adj pos');
+                endAngle = endAngle <= 0 ? endAngle + Math.PI * 2 : endAngle
+            }
+            */
+
+            if (!sweep && endAngle > startAngle) {
+                //console.log('adj neg');
+                //startAngle -= Math.PI * 2
+            }
+
+            if (sweep && startAngle > endAngle) {
+                //console.log('adj pos');
+                //endAngle = endAngle <= 0 ? endAngle + Math.PI * 2 : endAngle
+            }
+
+
+
+
+            // Calculate delta angle
+            let deltaAngle = endAngle - startAngle;
+            deltaAngle = sweep ? deltaAngle : Math.PI*2 - deltaAngle;
+
+            let deltaAngle_deg = +(deltaAngle * 180 / Math.PI).toFixed(3)
+
+            //console.log('deltaAngle_deg', deltaAngle_deg);
+
+            // new large Arc
+            largeArc = Math.abs(deltaAngle) >= Math.PI ? 1 : 0
+
+            // Area-based sweep determination (positive = CW, negative = CCW)
+            let areaCenter = mtrXYZ.getPolygonArea([p0, { x: cx, y: cy }, p]);
+            //sweep = areaCenter >= 0 ? 1 : 0;
+            //sweep = deltaAngle > 0 ? 1 : 0;
+
+            return {
+                deltaAngle: deltaAngle,
+                largeArc: largeArc,
+                sweep: sweep,
+            };
+        }
+
 
 
         // transform starting point
         p0 = mtrXYZ.transformPoint(p0, matrix, perspectiveOrigin, perspective);
         p = mtrXYZ.transformPoint(p, matrix, perspectiveOrigin, perspective);
+
+
+        // transform centroid
+        let cnt = mtrXYZ.transformPoint({ x: cx, y: cy }, matrix, perspectiveOrigin, perspective)
 
 
 
@@ -147,6 +195,8 @@ export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, 
         // transform hull
         let hullTrans = mtrXYZ.transformPoints(hull, matrix, perspectiveOrigin, perspective)
 
+        //console.log('hullTrans', hullTrans);
+
         // get hullMatrix
         let hullMatrix = mtrXYZ.getConvexHullMatrix(hullTrans)
 
@@ -155,42 +205,76 @@ export function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, 
         //console.log('arcPropsTrans', arcPropsTrans);
 
 
-        /**
-         * get reference point on ellipe at mid delta angle
-         * to detect sweep and large arc changes
-         */
-        let ptR = mtrXYZ.getPointOnEllipse(cx, cy, rx, ry, (startAngle + deltaAngle * 0.5), xAxisRotationRad)
+        // get reference point on ellipe
+        let xAxisRotation_rad =xAxisRotation*Math.PI/180
+
+        //let angleRef = arcPropsTrans.angle*Math.PI/180
+        //let ptR = mtrXYZ.getPointOnEllipse(arcPropsTrans.cx, arcPropsTrans.cy, arcPropsTrans.ry, arcPropsTrans.ry, angleRef+Math.PI*0.1, xAxisRotation_rad)
+
+        let ptR = mtrXYZ.getPointOnEllipse(cx, cy, rx, ry, (startAngle + deltaAngle*0.5), xAxisRotation_rad)
+
 
         // transform reference point
         ptR = mtrXYZ.transformPoint(ptR, matrix, perspectiveOrigin, perspective);
+        mtrXYZ.renderPoint(markers, ptR, 'orange')
 
-        // actual transformed ellipse center
-        let cntT = { x: arcPropsTrans.cx, y: arcPropsTrans.cy }
+
+
+
 
         /**
-         * detect sweep changes based 
-         * on area changes
-         */
-        let areaTrans = mtrXYZ.getPolygonArea([cntT, p0, ptR, p])
-        sweep = areaTrans < 0 ? 0 : 1;
+        * adjust sweep if flipped
+        * compare sign changed between original area and transformed
+        */
+        //let areaTrans = mtrXYZ.getPolygonArea([p0, cnt, p])
+        //let areaTrans = mtrXYZ.getPolygonArea([p0, { x: arcPropsTrans.cx, y: arcPropsTrans.cy }, p])
+
+        //get area from hull polygon
+        let areaTrans = mtrXYZ.getPolygonArea(hullTrans)
+        let signChange = area >= 0 && areaTrans <= 0 || area <= 0 && areaTrans >= 0
+        let sweep2 =  areaTrans>=0 ? 1 : 0
+
+        console.log('sweep2', sweep, sweep2, area, areaTrans);
+
+        //if(newDelta.sweep)
 
 
-        // get ultimate largeArc value
-        let largeArcnew = detectLargeArc(cntT, p0, ptR, p, sweep);
-        largeArc = largeArcnew.largeArc
+        let newDelta = getDeltaAndSweep(p0, arcPropsTrans.cx, arcPropsTrans.cy, p, sweep2, largeArc);
+        // newDelta = getDeltaAndSweep(p0, cnt.x, cnt.y, p);
+        //let newDelta = getDeltaAndSweep(p0, cx, cy, p);
+        console.log('newDelta', newDelta, 'areaTrans', area, areaTrans);
 
-        // update radii and xAxisRotation
-        rx=arcPropsTrans.rx
-        ry=arcPropsTrans.ry
-        xAxisRotation = rx!==ry ? arcPropsTrans.angle : 0;
 
-        
+        //sweep = newDelta.sweep;
+        if (newDelta.largeArc !== largeArc) {
+            console.log('largeArc change', newDelta.largeArc, largeArc);
+            //largeArc = largeArc === 0 ? 1 : 0;
+        }
+        //largeArc = newDelta.largeArc===1 && largeArc===0 ? 1 : 0;
+
+
+        largeArc = newDelta.largeArc
+        //sweep = newDelta.sweep
+        sweep = sweep2
+        //sweep = sweep ===0 ? 1 : 0
+
+
+
+        /*
+        */
+        // adjust sweep
+        //newDelta.sweep!==sweep || 
+        if (signChange) {
+            //console.log('sweep change', newDelta.sweep, sweep, signChange);
+            //sweep = sweep === 0 ? 1 : 0;
+        }
+
         return {
             type: 'A',
             values: [
-                rx,
-                ry,
-                xAxisRotation,
+                arcPropsTrans.rx,
+                arcPropsTrans.ry,
+                arcPropsTrans.angle,
                 largeArc,
                 sweep,
                 p.x,

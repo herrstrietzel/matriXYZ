@@ -88,12 +88,7 @@ let inputs_data = [
                 `,
             },
 
-            /*
-            {
-                info: `<h3>Css</h3><p>
-                <textarea class="brd-non scrollbar scroll-content code fnt-siz-0-75em " id="cssOutput" readonly data-tools="copy download" data-file="font.css" ></textarea>`,
-            },
-            */
+
 
             {
                 label:'CSS',
@@ -120,7 +115,12 @@ let inputs = [
 
     {
         // just a info box
-        info: `<h1 class="h2">MatriXYZ</h1><p>MatriXYZ is a versatile matrix generator for 2D and 3D matrices with point transformation features.</p>`,
+        info: `<h1 class="h2">MtrXYZ</h1><p>MtrXYZ is a versatile matrix generator for 2D and 3D matrices with point transformation features.</p>`,
+    },
+
+    {
+        // just a info box
+        info: `<p>All number fields can be incremented/decremented by arrow keys or mouse whell controls.Besides, you can add simple calculations such as additions/subtractions or multiplications/devisions by adding operators like so: <code class="code">10 + 5</code></p>`,
     },
 
     {
@@ -146,9 +146,6 @@ let inputs = [
         type: 'details',
         open: true,
         fields: [
-
-
-
             {
                 name: 'force3D',
                 label: 'Force 3D',
@@ -237,7 +234,7 @@ let inputs = [
                 defaults:[1,1,1],
                 atts: {
                     class: '',
-                    min: 0,
+                    min: -5,
                     max: 5,
                     step: 0.1,
                     class: 'inputTrans',

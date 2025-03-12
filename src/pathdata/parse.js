@@ -105,8 +105,7 @@ export function parse(path, debug = true) {
     function isSpace(ch) {
         return (ch === 0x0A) || (ch === 0x0D) || (ch === 0x2028) || (ch === 0x2029) || // Line terminators
             // White spaces or comma
-            (ch === 44) || (ch === 0x002C) || (ch === 0x20) || (ch === 0x09) || (ch === 0x0B) || (ch === 0x0C) || (ch === 0xA0) ||
-            (ch >= 0x1680 && SPECIAL_SPACES.has(ch) >= 0);
+            (ch === 0x20) || (ch === 44) || (ch === 0x002C) || (ch === 0x09) || (ch === 0x0B) || (ch === 0x0C) || (ch === 0xA0) || (ch >= 0x1680 && SPECIAL_SPACES.has(ch) >= 0);
     }
 
     function isCommandType(code) {

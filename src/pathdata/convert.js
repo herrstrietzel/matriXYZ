@@ -70,15 +70,16 @@ export function convertPathData(pathData,
 
 
     // convert to absolute
-    if (toAbsolute) pathData = pathDataToAbsolute(pathData)
+    //if (toAbsolute) pathData = pathDataToAbsolute(pathData)
+    if (toAbsolute) pathData = pathDataToAbsoluteOrRelative(pathData)
+
 
 
     // convert to longhands
     if (toLonghands) pathData = pathDataToLonghands(pathData, -1, false)
-    //console.log('conv', pathData);
 
 
-    // arct to cubic
+    // arc to cubic
     if (arcToCubic) pathData = pathDataArcsToCubics(pathData)
 
 
@@ -87,13 +88,12 @@ export function convertPathData(pathData,
 
 
     // to Relative
-    //console.log(toAbsolute, toRelative, toLonghands);
-    //if (toRelative) pathData = pathDataToRelative(pathData, decimals)
-    if (toRelative) pathData = pathDataToRelative(pathData)
+    if (toRelative) pathData = pathDataToAbsoluteOrRelative(pathData, true)
 
 
-    // round if not already rounded
-    //let hasDecimal = pathData[0].hasOwnProperty('decimals')
+    // add arcInfo to command object
+    let addArcInfo = true;
+    if (addArcInfo) pathData = pathDataAddArcInfo(pathData)
 
 
     // post round
@@ -103,6 +103,47 @@ export function convertPathData(pathData,
     }
 
     return pathData;
+}
+
+
+
+/**
+ * add arc command info:
+ * adds parametrized arc data to 
+ * the command object for reusable
+ * ellipse centroid and xAxisRotaion calculations
+ * rx and ry don't necissarily describe the actual radii!
+ */
+
+export function pathDataAddArcInfo(pathData){
+
+    for(let i=0, len=pathData.length; len && i<len; i++){
+        let com = pathData[i];
+
+        if(com.type==='A'){
+
+            let comPrev = pathData[i-1];
+            //let valuesLast = com.values.slice(-2)
+            let valuesPrevLast = comPrev.values.slice(-2)
+            let p0 = {x:valuesPrevLast[0], y:valuesPrevLast[1]}
+            //let p = {x:valuesLast[0], y:valuesLast[1]}
+            let [rx, ry, xAxisRotation, largeArc, sweep, x2, y2 ] = com.values;
+            let arcData = mtrXYZ.svgArcToCenterParam(p0.x, p0.y, rx, ry, xAxisRotation, largeArc, sweep, x2, y2)
+            com.rx= arcData.rx
+            com.ry= arcData.ry
+            com.cx= arcData.cx
+            com.cy= arcData.cy
+            com.xAxisRotation= xAxisRotation
+            com.largeArc= largeArc
+            com.startAngle= arcData.startAngle
+            com.endAngle= arcData.endAngle
+            com.deltaAngle= arcData.deltaAngle
+            //console.log('arcdata', arcData)
+        }
+    }
+
+    //console.log(pathData);
+    return pathData
 }
 
 
@@ -192,179 +233,6 @@ export function quadratic2Cubic(p0, com) {
 }
 
 
-/**
- * This is just a port of Dmitry Baranovskiy's 
- * pathToRelative/Absolute methods used in snap.svg
- * https://github.com/adobe-webplatform/Snap.svg/
- * 
- * Demo: https://codepen.io/herrstrietzel/pen/poVKbgL
- */
-
-// convert to relative commands
-export function pathDataToRelative(pathData, decimals = -1) {
-
-    //pathData = JSON.parse(JSON.stringify(pathData))
-
-    // round coordinates to prevent distortions
-    if (decimals >= 0) {
-        pathData[0].values = pathData[0].values.map(val => { return +val.toFixed(decimals) })
-    }
-
-    //console.log('rel', pathData);
-
-    let M = pathData[0].values;
-    let x = M[0],
-        y = M[1],
-        mx = x,
-        my = y;
-
-
-    // loop through commands
-    for (let i = 1, len = pathData.length; i < len; i++) {
-        let com = pathData[i];
-
-        // round coordinates to prevent distortions
-        if (decimals >= 0 && com.values.length) {
-            com.values = com.values.map(val => { return +val.toFixed(decimals) })
-        }
-        let { type, values } = com;
-        let typeRel = type.toLowerCase();
-
-
-        // is absolute
-        if (type != typeRel) {
-            type = typeRel;
-            com.type = type;
-            // check current command types
-            switch (typeRel) {
-                case "a":
-                    values[5] = +(values[5] - x);
-                    values[6] = +(values[6] - y);
-                    break;
-                case "v":
-                    values[0] = +(values[0] - y);
-                    break;
-                case "m":
-                    mx = values[0];
-                    my = values[1];
-                default:
-                    // other commands
-                    if (values.length) {
-                        for (let v = 0; v < values.length; v++) {
-                            // even value indices are y coordinates
-                            values[v] = values[v] - (v % 2 ? y : x);
-                        }
-                    }
-            }
-        }
-        // is already relative
-        else {
-            if (type == "m") {
-                mx = values[0] + x;
-                my = values[1] + y;
-            }
-        }
-        let vLen = values.length;
-        switch (type) {
-            case "z":
-                x = mx;
-                y = my;
-                break;
-            case "h":
-                x += values[vLen - 1];
-                break;
-            case "v":
-                y += values[vLen - 1];
-                break;
-            default:
-                x += values[vLen - 2];
-                y += values[vLen - 1];
-        }
-        // round final relative values
-        if (decimals > -1) {
-            com.values = com.values.map(val => { return +val.toFixed(decimals) })
-        }
-    }
-    return pathData;
-}
-
-export function pathDataToAbsolute(pathData, decimals = -1) {
-
-
-    let M = pathData[0].values;
-    let x = M[0],
-        y = M[1],
-        mx = x,
-        my = y;
-
-    // loop through commands
-    for (let i = 1, len = pathData.length; i < len; i++) {
-        let com = pathData[i];
-
-        let { type, values } = com;
-        let typeAbs = type.toUpperCase();
-
-        if (type != typeAbs) {
-            type = typeAbs;
-            com.type = type;
-            // check current command types
-            switch (typeAbs) {
-                case "A":
-                    values[5] = +(values[5] + x);
-                    values[6] = +(values[6] + y);
-                    break;
-
-                case "V":
-                    values[0] = +(values[0] + y);
-                    break;
-
-                case "H":
-                    values[0] = +(values[0] + x);
-                    break;
-
-                case "M":
-                    mx = +values[0] + x;
-                    my = +values[1] + y;
-
-                default:
-                    // other commands
-                    if (values.length) {
-                        for (let v = 0; v < values.length; v++) {
-                            // even value indices are y coordinates
-                            values[v] = values[v] + (v % 2 ? y : x);
-                        }
-                    }
-            }
-        }
-        // is already absolute
-        let vLen = values.length;
-        switch (type) {
-            case "Z":
-                x = +mx;
-                y = +my;
-                break;
-            case "H":
-                x = values[0];
-                break;
-            case "V":
-                y = values[0];
-                break;
-            case "M":
-                mx = values[vLen - 2];
-                my = values[vLen - 1];
-
-            default:
-                x = values[vLen - 2];
-                y = values[vLen - 1];
-        }
-        // round final absolute values
-        if (decimals > -1) {
-            com.values = com.values.map(val => { return +val.toFixed(decimals) })
-        }
-    }
-    return pathData;
-}
-
 
 /**
  * decompose/convert shorthands to "longhand" commands:
@@ -387,7 +255,7 @@ export function pathDataToLonghands(pathData, decimals = -1, test = true) {
         }
     }
 
-    pathData = test && hasRel ? pathDataToAbsolute(pathData, decimals) : pathData;
+    pathData = test && hasRel ? pathDataToAbsoluteOrRelative(pathData, false, decimals) : pathData;
 
     let pathDataLonghand = [];
     let comPrev = {
@@ -479,9 +347,6 @@ export function pathDataToLonghands(pathData, decimals = -1, test = true) {
  */
 export function pathDataToShorthands(pathData, decimals = -1, test = true) {
 
-    //pathData = JSON.parse(JSON.stringify(pathData))
-    //console.log('has dec', pathData);
-
     /** 
     * analyze pathdata – if you're sure your data is already absolute skip it via test=false
     */
@@ -491,7 +356,7 @@ export function pathDataToShorthands(pathData, decimals = -1, test = true) {
         hasRel = /[astvqmhlc]/g.test(commandTokens);
     }
 
-    pathData = test && hasRel ? pathDataToAbsolute(pathData, decimals) : pathData;
+    pathData = test && hasRel ? pathDataToAbsoluteOrRelative(pathData, false, decimals) : pathData;
 
     let comShort = {
         type: "M",
@@ -1102,96 +967,6 @@ export function arcToBezier(p0, values, splitSegments = 1) {
 }
 
 
-/**
- * add readable command point data 
- * to pathData command objects
- */
-export function pathDataToVerbose(pathData) {
-
-    let pathDataOriginal = JSON.parse(JSON.stringify(pathData))
-
-    // normalize
-    pathData = pathDataToLonghands(pathDataToAbsolute(pathData));
-
-    let pathDataVerbose = [];
-    let pathDataL = pathData.length;
-    let closed = pathData[pathDataL - 1].type.toLowerCase() === 'z' ? true : false;
-
-    pathData.forEach((com, i) => {
-        let {
-            type,
-            values
-        } = com;
-
-        let comO = pathDataOriginal[i];
-        let typeO = comO.type;
-        let valuesO = comO.values;
-
-        let typeLc = typeO.toLowerCase();
-        let valuesL = values.length;
-        let isRel = typeO === typeO.toLowerCase();
-
-        let comPrev = pathData[i - 1] ? pathData[i - 1] : false;
-        let comPrevValues = comPrev ? comPrev.values : [];
-        let comPrevValuesL = comPrevValues.length;
-
-
-        let p0 = {
-            x: comPrevValues[comPrevValuesL - 2],
-            y: comPrevValues[comPrevValuesL - 1]
-        }
-
-        let p = valuesL ? {
-            x: values[valuesL - 2],
-            y: values[valuesL - 1]
-        } : (i === pathData.length - 1 && closed ? pathData[0].values : false);
-
-        let comObj = {
-            type: typeO,
-            values: valuesO,
-            valuesAbsolute: values,
-            pFinal: p,
-            isRelative: isRel
-        }
-        if (comPrevValuesL) {
-            comObj.pPrev = p0
-        }
-        switch (typeLc) {
-            case 'q':
-                comObj.cp1 = {
-                    x: values[valuesL - 4],
-                    y: values[valuesL - 3]
-                }
-                break;
-            case 'c':
-                comObj.cp1 = {
-                    x: values[valuesL - 6],
-                    y: values[valuesL - 5]
-                }
-                comObj.cp2 = {
-                    x: values[valuesL - 4],
-                    y: values[valuesL - 3]
-                }
-                break;
-            case 'a':
-
-                // parametrized arc rx and ry values
-                let arcData = svgArcToCenterParam(p0.x, p0.y, values[0], values[1], values[2], values[3], values[4], values[5], values[6]);
-
-                comObj.rx = arcData.rx
-                comObj.ry = arcData.ry
-                comObj.xAxisRotation = values[2]
-                comObj.largeArcFlag = values[3]
-                comObj.sweepFlag = values[4]
-                comObj.startAngle = arcData.startAngle
-                comObj.endAngle = arcData.endAngle
-                comObj.deltaAngle = arcData.deltaAngle
-                break;
-        }
-        pathDataVerbose.push(comObj);
-    });
-    return pathDataVerbose;
-}
 
 /**
 * convert pathData nested array notation
@@ -1222,3 +997,91 @@ export function revertPathDataToArray(pathData) {
 }
 
 
+
+export function pathDataToAbsoluteOrRelative(pathData, toRelative = false, decimals = -1) {
+    if (decimals >= 0) {
+        pathData[0].values = pathData[0].values.map(val => +val.toFixed(decimals));
+    }
+
+    let M = pathData[0].values;
+    let x = M[0],
+        y = M[1],
+        mx = x,
+        my = y;
+
+    for (let i = 1, len = pathData.length; i < len; i++) {
+        let com = pathData[i];
+        let { type, values } = com;
+        let newType = toRelative ? type.toLowerCase() : type.toUpperCase();
+
+        if (type !== newType) {
+            type = newType;
+            com.type = type;
+
+            switch (type) {
+                case "a":
+                case "A":
+                    values[5] = toRelative ? values[5] - x : values[5] + x;
+                    values[6] = toRelative ? values[6] - y : values[6] + y;
+                    break;
+                case "v":
+                case "V":
+                    values[0] = toRelative ? values[0] - y : values[0] + y;
+                    break;
+                case "h":
+                case "H":
+                    values[0] = toRelative ? values[0] - x : values[0] + x;
+                    break;
+                case "m":
+                case "M":
+                    if (toRelative) {
+                        values[0] -= x;
+                        values[1] -= y;
+                    } else {
+                        values[0] += x;
+                        values[1] += y;
+                    }
+                    mx = toRelative ? values[0] + x : values[0];
+                    my = toRelative ? values[1] + y : values[1];
+                    break;
+                default:
+                    if (values.length) {
+                        for (let v = 0; v < values.length; v++) {
+                            values[v] = toRelative
+                                ? values[v] - (v % 2 ? y : x)
+                                : values[v] + (v % 2 ? y : x);
+                        }
+                    }
+            }
+        }
+
+        let vLen = values.length;
+        switch (type) {
+            case "z":
+            case "Z":
+                x = mx;
+                y = my;
+                break;
+            case "h":
+            case "H":
+                x = toRelative ? x + values[0] : values[0];
+                break;
+            case "v":
+            case "V":
+                y = toRelative ? y + values[0] : values[0];
+                break;
+            case "m":
+            case "M":
+                mx = values[vLen - 2] + (toRelative ? x : 0);
+                my = values[vLen - 1] + (toRelative ? y : 0);
+            default:
+                x = values[vLen - 2] + (toRelative ? x : 0);
+                y = values[vLen - 1] + (toRelative ? y : 0);
+        }
+
+        if (decimals >= 0) {
+            com.values = com.values.map(val => +val.toFixed(decimals));
+        }
+    }
+    return pathData;
+}

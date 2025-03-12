@@ -107,8 +107,7 @@ function parse(path, debug = true) {
     function isSpace(ch) {
         return (ch === 0x0A) || (ch === 0x0D) || (ch === 0x2028) || (ch === 0x2029) || // Line terminators
             // White spaces or comma
-            (ch === 44) || (ch === 0x002C) || (ch === 0x20) || (ch === 0x09) || (ch === 0x0B) || (ch === 0x0C) || (ch === 0xA0) ||
-            (ch >= 0x1680 && SPECIAL_SPACES.has(ch) >= 0);
+            (ch === 0x20) || (ch === 44) || (ch === 0x002C) || (ch === 0x09) || (ch === 0x0B) || (ch === 0x0C) || (ch === 0xA0) || (ch >= 0x1680 && SPECIAL_SPACES.has(ch) >= 0);
     }
 
     function isCommandType(code) {
@@ -512,15 +511,16 @@ function convertPathData(pathData,
 
 
     // convert to absolute
-    if (toAbsolute) pathData = pathDataToAbsolute(pathData);
+    //if (toAbsolute) pathData = pathDataToAbsolute(pathData)
+    if (toAbsolute) pathData = pathDataToAbsoluteOrRelative(pathData);
+
 
 
     // convert to longhands
     if (toLonghands) pathData = pathDataToLonghands(pathData, -1, false);
-    //console.log('conv', pathData);
 
 
-    // arct to cubic
+    // arc to cubic
     if (arcToCubic) pathData = pathDataArcsToCubics(pathData);
 
 
@@ -529,13 +529,8 @@ function convertPathData(pathData,
 
 
     // to Relative
-    //console.log(toAbsolute, toRelative, toLonghands);
-    //if (toRelative) pathData = pathDataToRelative(pathData, decimals)
-    if (toRelative) pathData = pathDataToRelative(pathData);
-
-
-    // round if not already rounded
-    //let hasDecimal = pathData[0].hasOwnProperty('decimals')
+    if (toRelative) pathData = pathDataToAbsoluteOrRelative(pathData, true);
+    pathData = pathDataAddArcInfo(pathData);
 
 
     // post round
@@ -545,6 +540,47 @@ function convertPathData(pathData,
     }
 
     return pathData;
+}
+
+
+
+/**
+ * add arc command info:
+ * adds parametrized arc data to 
+ * the command object for reusable
+ * ellipse centroid and xAxisRotaion calculations
+ * rx and ry don't necissarily describe the actual radii!
+ */
+
+function pathDataAddArcInfo(pathData){
+
+    for(let i=0, len=pathData.length; len && i<len; i++){
+        let com = pathData[i];
+
+        if(com.type==='A'){
+
+            let comPrev = pathData[i-1];
+            //let valuesLast = com.values.slice(-2)
+            let valuesPrevLast = comPrev.values.slice(-2);
+            let p0 = {x:valuesPrevLast[0], y:valuesPrevLast[1]};
+            //let p = {x:valuesLast[0], y:valuesLast[1]}
+            let [rx, ry, xAxisRotation, largeArc, sweep, x2, y2 ] = com.values;
+            let arcData = mtrXYZ.svgArcToCenterParam(p0.x, p0.y, rx, ry, xAxisRotation, largeArc, sweep, x2, y2);
+            com.rx= arcData.rx;
+            com.ry= arcData.ry;
+            com.cx= arcData.cx;
+            com.cy= arcData.cy;
+            com.xAxisRotation= xAxisRotation;
+            com.largeArc= largeArc;
+            com.startAngle= arcData.startAngle;
+            com.endAngle= arcData.endAngle;
+            com.deltaAngle= arcData.deltaAngle;
+            //console.log('arcdata', arcData)
+        }
+    }
+
+    //console.log(pathData);
+    return pathData
 }
 
 
@@ -586,179 +622,6 @@ function pathDataArcsToCubics(pathData, {
 }
 
 
-/**
- * This is just a port of Dmitry Baranovskiy's 
- * pathToRelative/Absolute methods used in snap.svg
- * https://github.com/adobe-webplatform/Snap.svg/
- * 
- * Demo: https://codepen.io/herrstrietzel/pen/poVKbgL
- */
-
-// convert to relative commands
-function pathDataToRelative(pathData, decimals = -1) {
-
-    //pathData = JSON.parse(JSON.stringify(pathData))
-
-    // round coordinates to prevent distortions
-    if (decimals >= 0) {
-        pathData[0].values = pathData[0].values.map(val => { return +val.toFixed(decimals) });
-    }
-
-    //console.log('rel', pathData);
-
-    let M = pathData[0].values;
-    let x = M[0],
-        y = M[1],
-        mx = x,
-        my = y;
-
-
-    // loop through commands
-    for (let i = 1, len = pathData.length; i < len; i++) {
-        let com = pathData[i];
-
-        // round coordinates to prevent distortions
-        if (decimals >= 0 && com.values.length) {
-            com.values = com.values.map(val => { return +val.toFixed(decimals) });
-        }
-        let { type, values } = com;
-        let typeRel = type.toLowerCase();
-
-
-        // is absolute
-        if (type != typeRel) {
-            type = typeRel;
-            com.type = type;
-            // check current command types
-            switch (typeRel) {
-                case "a":
-                    values[5] = +(values[5] - x);
-                    values[6] = +(values[6] - y);
-                    break;
-                case "v":
-                    values[0] = +(values[0] - y);
-                    break;
-                case "m":
-                    mx = values[0];
-                    my = values[1];
-                default:
-                    // other commands
-                    if (values.length) {
-                        for (let v = 0; v < values.length; v++) {
-                            // even value indices are y coordinates
-                            values[v] = values[v] - (v % 2 ? y : x);
-                        }
-                    }
-            }
-        }
-        // is already relative
-        else {
-            if (type == "m") {
-                mx = values[0] + x;
-                my = values[1] + y;
-            }
-        }
-        let vLen = values.length;
-        switch (type) {
-            case "z":
-                x = mx;
-                y = my;
-                break;
-            case "h":
-                x += values[vLen - 1];
-                break;
-            case "v":
-                y += values[vLen - 1];
-                break;
-            default:
-                x += values[vLen - 2];
-                y += values[vLen - 1];
-        }
-        // round final relative values
-        if (decimals > -1) {
-            com.values = com.values.map(val => { return +val.toFixed(decimals) });
-        }
-    }
-    return pathData;
-}
-
-function pathDataToAbsolute(pathData, decimals = -1) {
-
-
-    let M = pathData[0].values;
-    let x = M[0],
-        y = M[1],
-        mx = x,
-        my = y;
-
-    // loop through commands
-    for (let i = 1, len = pathData.length; i < len; i++) {
-        let com = pathData[i];
-
-        let { type, values } = com;
-        let typeAbs = type.toUpperCase();
-
-        if (type != typeAbs) {
-            type = typeAbs;
-            com.type = type;
-            // check current command types
-            switch (typeAbs) {
-                case "A":
-                    values[5] = +(values[5] + x);
-                    values[6] = +(values[6] + y);
-                    break;
-
-                case "V":
-                    values[0] = +(values[0] + y);
-                    break;
-
-                case "H":
-                    values[0] = +(values[0] + x);
-                    break;
-
-                case "M":
-                    mx = +values[0] + x;
-                    my = +values[1] + y;
-
-                default:
-                    // other commands
-                    if (values.length) {
-                        for (let v = 0; v < values.length; v++) {
-                            // even value indices are y coordinates
-                            values[v] = values[v] + (v % 2 ? y : x);
-                        }
-                    }
-            }
-        }
-        // is already absolute
-        let vLen = values.length;
-        switch (type) {
-            case "Z":
-                x = +mx;
-                y = +my;
-                break;
-            case "H":
-                x = values[0];
-                break;
-            case "V":
-                y = values[0];
-                break;
-            case "M":
-                mx = values[vLen - 2];
-                my = values[vLen - 1];
-
-            default:
-                x = values[vLen - 2];
-                y = values[vLen - 1];
-        }
-        // round final absolute values
-        if (decimals > -1) {
-            com.values = com.values.map(val => { return +val.toFixed(decimals) });
-        }
-    }
-    return pathData;
-}
-
 
 /**
  * decompose/convert shorthands to "longhand" commands:
@@ -781,7 +644,7 @@ function pathDataToLonghands(pathData, decimals = -1, test = true) {
         }
     }
 
-    pathData = test && hasRel ? pathDataToAbsolute(pathData, decimals) : pathData;
+    pathData = test && hasRel ? pathDataToAbsoluteOrRelative(pathData, false, decimals) : pathData;
 
     let pathDataLonghand = [];
     let comPrev = {
@@ -873,9 +736,6 @@ function pathDataToLonghands(pathData, decimals = -1, test = true) {
  */
 function pathDataToShorthands(pathData, decimals = -1, test = true) {
 
-    //pathData = JSON.parse(JSON.stringify(pathData))
-    //console.log('has dec', pathData);
-
     /** 
     * analyze pathdata – if you're sure your data is already absolute skip it via test=false
     */
@@ -885,7 +745,7 @@ function pathDataToShorthands(pathData, decimals = -1, test = true) {
         hasRel = /[astvqmhlc]/g.test(commandTokens);
     }
 
-    pathData = test && hasRel ? pathDataToAbsolute(pathData, decimals) : pathData;
+    pathData = test && hasRel ? pathDataToAbsoluteOrRelative(pathData, false, decimals) : pathData;
 
     let comShort = {
         type: "M",
@@ -1179,6 +1039,96 @@ function arcToBezier(p0, values, splitSegments = 1) {
     return pathDataArc;
 }
 
+
+
+function pathDataToAbsoluteOrRelative(pathData, toRelative = false, decimals = -1) {
+    if (decimals >= 0) {
+        pathData[0].values = pathData[0].values.map(val => +val.toFixed(decimals));
+    }
+
+    let M = pathData[0].values;
+    let x = M[0],
+        y = M[1],
+        mx = x,
+        my = y;
+
+    for (let i = 1, len = pathData.length; i < len; i++) {
+        let com = pathData[i];
+        let { type, values } = com;
+        let newType = toRelative ? type.toLowerCase() : type.toUpperCase();
+
+        if (type !== newType) {
+            type = newType;
+            com.type = type;
+
+            switch (type) {
+                case "a":
+                case "A":
+                    values[5] = toRelative ? values[5] - x : values[5] + x;
+                    values[6] = toRelative ? values[6] - y : values[6] + y;
+                    break;
+                case "v":
+                case "V":
+                    values[0] = toRelative ? values[0] - y : values[0] + y;
+                    break;
+                case "h":
+                case "H":
+                    values[0] = toRelative ? values[0] - x : values[0] + x;
+                    break;
+                case "m":
+                case "M":
+                    if (toRelative) {
+                        values[0] -= x;
+                        values[1] -= y;
+                    } else {
+                        values[0] += x;
+                        values[1] += y;
+                    }
+                    mx = toRelative ? values[0] + x : values[0];
+                    my = toRelative ? values[1] + y : values[1];
+                    break;
+                default:
+                    if (values.length) {
+                        for (let v = 0; v < values.length; v++) {
+                            values[v] = toRelative
+                                ? values[v] - (v % 2 ? y : x)
+                                : values[v] + (v % 2 ? y : x);
+                        }
+                    }
+            }
+        }
+
+        let vLen = values.length;
+        switch (type) {
+            case "z":
+            case "Z":
+                x = mx;
+                y = my;
+                break;
+            case "h":
+            case "H":
+                x = toRelative ? x + values[0] : values[0];
+                break;
+            case "v":
+            case "V":
+                y = toRelative ? y + values[0] : values[0];
+                break;
+            case "m":
+            case "M":
+                mx = values[vLen - 2] + (toRelative ? x : 0);
+                my = values[vLen - 1] + (toRelative ? y : 0);
+            default:
+                x = values[vLen - 2] + (toRelative ? x : 0);
+                y = values[vLen - 1] + (toRelative ? y : 0);
+        }
+
+        if (decimals >= 0) {
+            com.values = com.values.map(val => +val.toFixed(decimals));
+        }
+    }
+    return pathData;
+}
+
 const { abs, acos, atan, atan2, cos, sin, log, max, min, sqrt, tan, PI, pow } = Math;
 
 
@@ -1197,12 +1147,15 @@ function svgArcToCenterParam(x1, y1, rx, ry, xAxisRotation, largeArc, sweep, x2,
     rx = abs(rx);
     ry = abs(ry);
 
+    /**
+     * rx/ry values may be deceptive 
+     * due to end-point parametisation concept
+     */
 
     // create data object
     let arcData = {
         cx: 0,
         cy: 0,
-        // rx/ry values may be deceptive in arc commands
         rx: rx,
         ry: ry,
         startAngle: 0,
@@ -1217,51 +1170,53 @@ function svgArcToCenterParam(x1, y1, rx, ry, xAxisRotation, largeArc, sweep, x2,
         throw Error("rx and ry can not be 0");
     }
 
-    let shortcut = true;
+    /*
+    // try to take a shortcut by detecting semicircles
+    let shortcut = true
     //console.log('short');
 
     if (rx === ry && shortcut) {
 
         // test semicircles
-        let diffX = Math.abs(x2 - x1);
-        let diffY = Math.abs(y2 - y1);
+        let diffX = Math.abs(x2 - x1)
+        let diffY = Math.abs(y2 - y1)
         let r = diffX;
 
         let xMin = Math.min(x1, x2),
             yMin = Math.min(y1, y2),
-            PIHalf = Math.PI * 0.5;
-
+            PIHalf = Math.PI * 0.5
 
         // semi circles
         if (diffX === 0 && diffY || diffY === 0 && diffX) {
             //console.log('semi');
 
             r = diffX === 0 && diffY ? diffY / 2 : diffX / 2;
-            arcData.rx = r;
-            arcData.ry = r;
+            arcData.rx = r
+            arcData.ry = r
 
             // verical
             if (diffX === 0 && diffY) {
                 arcData.cx = x1;
                 arcData.cy = yMin + diffY / 2;
-                arcData.startAngle = y1 > y2 ? PIHalf : -PIHalf;
-                arcData.endAngle = y1 > y2 ? -PIHalf : PIHalf;
-                arcData.deltaAngle = sweep ? Math.PI : -Math.PI;
+                arcData.startAngle = y1 > y2 ? PIHalf : -PIHalf
+                arcData.endAngle = y1 > y2 ? -PIHalf : PIHalf
+                arcData.deltaAngle = sweep ? Math.PI : -Math.PI
 
             }
             // horizontal
             else if (diffY === 0 && diffX) {
                 arcData.cx = xMin + diffX / 2;
-                arcData.cy = y1;
-                arcData.startAngle = x1 > x2 ? Math.PI : 0;
-                arcData.endAngle = x1 > x2 ? -Math.PI : Math.PI;
-                arcData.deltaAngle = sweep ? Math.PI : -Math.PI;
+                arcData.cy = y1
+                arcData.startAngle = x1 > x2 ? Math.PI : 0
+                arcData.endAngle = x1 > x2 ? -Math.PI : Math.PI
+                arcData.deltaAngle = sweep ? Math.PI : -Math.PI
             }
 
             //console.log(arcData);
             return arcData;
         }
     }
+    */
 
     /**
      * if rx===ry x-axis rotation is ignored
@@ -1343,6 +1298,40 @@ function svgArcToCenterParam(x1, y1, rx, ry, xAxisRotation, largeArc, sweep, x2,
 
     //console.log('arc', arcData);
     return arcData;
+}
+
+
+function getPointOnEllipse(cx, cy, rx, ry, angle, ellipseRotation = 0, parametricAngle = true, degrees = false) {
+
+    // Convert degrees to radians
+    angle = degrees ? (angle * PI) / 180 : angle;
+    ellipseRotation = degrees ? (ellipseRotation * PI) / 180 : ellipseRotation;
+    // reset rotation for circles or 360 degree 
+    ellipseRotation = rx !== ry ? (ellipseRotation !== PI * 2 ? ellipseRotation : 0) : 0;
+
+    // is ellipse
+    if (parametricAngle && rx !== ry) {
+        // adjust angle for ellipse rotation
+        angle = ellipseRotation ? angle - ellipseRotation : angle;
+        // Get the parametric angle for the ellipse
+        let angleParametric = atan(tan(angle) * (rx / ry));
+        // Ensure the parametric angle is in the correct quadrant
+        angle = cos(angle) < 0 ? angleParametric + PI : angleParametric;
+    }
+
+    // Calculate the point on the ellipse without rotation
+    let x = cx + rx * cos(angle),
+        y = cy + ry * sin(angle);
+    let pt = {
+        x: x,
+        y: y
+    };
+
+    if (ellipseRotation) {
+        pt.x = cx + (x - cx) * cos(ellipseRotation) - (y - cy) * sin(ellipseRotation);
+        pt.y = cy + (x - cx) * sin(ellipseRotation) + (y - cy) * cos(ellipseRotation);
+    }
+    return pt
 }
 
 /**
@@ -1449,29 +1438,233 @@ function pathDataToD(pathData, optimize = 1) {
     return d;
 }
 
+/**
+ * create hull for arc segment
+ */
+
+
+
+function getEllipeHull(cx, cy, rx, ry, xAxisRotation) {
+
+    const rotatePt = (pt, cx, cy, angle, toRad = false) => {
+        if (toRad) angle = angle * Math.PI / 180;
+
+        if (angle === 0) {
+            return pt;
+        }
+        let cos = Math.cos(angle);
+        let sin = Math.sin(angle);
+        let nx = (cos * (pt.x - cx)) + (sin * (pt.y - cy)) + cx;
+        let ny = (cos * (pt.y - cy)) - (sin * (pt.x - cx)) + cy;
+        return { x: nx, y: ny };
+    };
+
+    // adjust angles for corner rotation
+    let angleadjust = xAxisRotation > 0 ? Math.PI/-2 : Math.PI/2;
+    //angleadjust=0
+
+    // to radian
+    xAxisRotation = xAxisRotation ? xAxisRotation + angleadjust : 0;
+
+    //console.log('xAxisRotation1', (xAxisRotation), (xAxisRotation*180/Math.PI) , 'angleadjust:', angleadjust, 'angleadjust degree:',(angleadjust*180/Math.PI) );
+
+
+    //xAxisRotation = xAxisRotation * Math.PI / 180
+
+    let pt1 = rotatePt({ x: cx - rx, y: cy - ry }, cx, cy, -xAxisRotation);
+    let pt2 = rotatePt({ x: cx + rx, y: cy - ry }, cx, cy, -xAxisRotation);
+    let pt3 = rotatePt({ x: cx + rx, y: cy + ry }, cx, cy, -xAxisRotation);
+    let pt4 = rotatePt({ x: cx - rx, y: cy + ry }, cx, cy, -xAxisRotation);
+
+    //{x:cx, y:cy}
+    return [pt1, pt2, pt3, pt4]
+}
+
+
+
+
+
+/**
+ * create hull matrix
+ * from quadrilateral
+ * http://chrisjones.id.au/Ellipses/ellipse.html
+ */
+function getConvexHullMatrix(pts) {
+    let decimals = 2;
+    pts.map(pt => { return { x: +pt.x.toFixed(decimals), y: +pt.y.toFixed(decimals) } });
+    //pts = ptsRound
+    //console.log(ptsRound);
+
+    let [W, X, Y, Z] = pts;
+    let matrix = {
+        m00: X.x * Y.x * Z.y - W.x * Y.x * Z.y - X.x * Y.y * Z.x + W.x * Y.y * Z.x - W.x * X.y * Z.x + W.y * X.x * Z.x + W.x * X.y * Y.x - W.y * X.x * Y.x,
+        m01: W.x * Y.x * Z.y - W.x * X.x * Z.y - X.x * Y.y * Z.x + X.y * Y.x * Z.x - W.y * Y.x * Z.x + W.y * X.x * Z.x + W.x * X.x * Y.y - W.x * X.y * Y.x,
+        m02: X.x * Y.x * Z.y - W.x * X.x * Z.y - W.x * Y.y * Z.x - X.y * Y.x * Z.x + W.y * Y.x * Z.x + W.x * X.y * Z.x + W.x * X.x * Y.y - W.y * X.x * Y.x,
+        m10: X.y * Y.x * Z.y - W.y * Y.x * Z.y - W.x * X.y * Z.y + W.y * X.x * Z.y - X.y * Y.y * Z.x + W.y * Y.y * Z.x + W.x * X.y * Y.y - W.y * X.x * Y.y,
+        m11: -X.x * Y.y * Z.y + W.x * Y.y * Z.y + X.y * Y.x * Z.y - W.x * X.y * Z.y - W.y * Y.y * Z.x + W.y * X.y * Z.x + W.y * X.x * Y.y - W.y * X.y * Y.x,
+        m12: X.x * Y.y * Z.y - W.x * Y.y * Z.y + W.y * Y.x * Z.y - W.y * X.x * Z.y - X.y * Y.y * Z.x + W.y * X.y * Z.x + W.x * X.y * Y.y - W.y * X.y * Y.x,
+        m20: X.x * Z.y - W.x * Z.y - X.y * Z.x + W.y * Z.x - X.x * Y.y + W.x * Y.y + X.y * Y.x - W.y * Y.x,
+        m21: Y.x * Z.y - X.x * Z.y - Y.y * Z.x + X.y * Z.x + W.x * Y.y - W.y * Y.x - W.x * X.y + W.y * X.x,
+        m22: Y.x * Z.y - W.x * Z.y - Y.y * Z.x + W.y * Z.x + X.x * Y.y - X.y * Y.x + W.x * X.y - W.y * X.x,
+    };
+
+    //matrix = matrix.map(key=>{return {x:+pt.x.toFixed(decimals), y:+pt.y.toFixed(decimals)} });
+    //Object.values(matrix).forEach()
+
+
+    // round
+    Object.entries(matrix).forEach(function(e){
+      // e[0] is the key and e[1] is the value
+      Number(e[1]);
+    });
+
+    /*
+
+        console.log(matrix);
+        */
+
+
+
+    return matrix
+}
+
+
+
+
+/**
+* Based on chris jones'
+* http://chrisjones.id.au/Ellipses/ellipse.html
+* and Laszlo Korte's JS implementation
+* https://static.laszlokorte.de/quad/
+*/
+
+function getEllipseProperties(hullMatrix) {
+
+    let { m00, m01, m02, m10, m11, m12, m20, m21, m22 } = hullMatrix;
+
+    // invert matrix
+    const determinant = +m00 * (m11 * m22 - m21 * m12) - m01 * (m10 * m22 - m12 * m20) + m02 * (m10 * m21 - m11 * m20);
+
+    if (determinant == 0) return null;
+
+    const invdet = 1 / determinant;
+    const J = (m11 * m22 - m21 * m12) * invdet;
+    const K = -(m01 * m22 - m02 * m21) * invdet;
+    const L = (m01 * m12 - m02 * m11) * invdet;
+    const M = -(m10 * m22 - m12 * m20) * invdet;
+    const N = (m00 * m22 - m02 * m20) * invdet;
+    const O = -(m00 * m12 - m10 * m02) * invdet;
+    const P = (m10 * m21 - m20 * m11) * invdet;
+    const Q = -(m00 * m21 - m20 * m01) * invdet;
+    const R = (m00 * m11 - m10 * m01) * invdet;
+
+    // extract ellipse coefficients from matrix
+    let a = J * J + M * M - P * P;
+    let b = J * K + M * N - P * Q;
+    let c = K * K + N * N - Q * Q;
+    let d = J * L + M * O - P * R;
+    let f = K * L + N * O - Q * R;
+    let g = L * L + O * O - R * R;
+
+
+
+    // deduce ellipse rotation from coefficients
+    let angle = 0;
+    if (b == 0 && a <= c) {
+        angle = 0;
+    } else if (b == 0 && a >= c) {
+        angle = Math.PI / 2;
+    } else if (b != 0 && a > c) {
+        angle = Math.PI / 2 + 0.5 * (Math.PI / 2 - Math.atan2((a - c), (2 * b)));
+    } else if (b != 0 && a <= c) {
+        angle = Math.PI / 2 + 0.5 * (Math.PI / 2 - Math.atan2((a - c), (2 * b)));
+    }
+
+
+    //convert to degrees
+    angle = angle * 180 / Math.PI;
+    //angle = Math.ceil(angle)
+    //angle = +(angle).toFixed(1)
+
+
+    return {
+        // deduce ellipse center from coefficients
+        cx: (c * d - b * f) / (b * b - a * c),
+        cy: (a * f - b * d) / (b * b - a * c),
+        // deduce ellipse radius from coefficients
+        rx: Math.sqrt(2 * (a * f * f + c * d * d + g * b * b - 2 * b * d * f - a * c * g) / ((b * b - a * c) *
+            (Math.sqrt((a - c) * (a - c) + 4 * b * b) - (a + c)))),
+        ry: Math.sqrt(2 * (a * f * f + c * d * d + g * b * b - 2 * b * d * f - a * c * g) / ((b * b - a * c) * (-Math.sqrt((a - c) * (a - c) + 4 * b * b) - (a + c)))),
+        // convert to degrees
+        angle: angle
+    }
+}
+
+
+
+function renderPoint(
+    svg,
+    coords,
+    fill = "red",
+    r = "1%",
+    opacity = "1",
+    title = '',
+    render = true,
+    id = "",
+    className = ""
+) {
+    if (Array.isArray(coords)) {
+        coords = {
+            x: coords[0],
+            y: coords[1]
+        };
+    }
+    let marker = `<circle class="${className}" opacity="${opacity}" id="${id}" cx="${coords.x}" cy="${coords.y}" r="${r}" fill="${fill}">
+<title>${title}</title></circle>`;
+
+    if (render) {
+        svg.insertAdjacentHTML("beforeend", marker);
+    } else {
+        return marker;
+    }
+}
+
+
+function getPolygonArea(points, tolerance = 0.001) {
+    let area = 0;
+    for (let i = 0, len = points.length; len && i < len; i++) {
+        let addX = points[i].x;
+        let addY = points[i === points.length - 1 ? 0 : i + 1].y;
+        let subX = points[i === points.length - 1 ? 0 : i + 1].x;
+        let subY = points[i].y;
+        area += addX * addY * 0.5 - subX * subY * 0.5;
+    }
+    return area;
+}
+
 //import { parse, convertPathData } from './pathdata/parse';
 //import { canFlattenTo2D, flattenTo2D } from '../getMatrix';
 //import { canFlattenTo2D, flattenTo2D } from '../getMatrix';
-//import * as MtrXYZ from 'MtrXYZ';
-//import {transformPoint3D, transformPoint2D, canFlattenTo2D, flattenTo2D } from 'MtrXYZ';
+//import * as mtrXYZ from 'mtrXYZ';
+//import {transformPoint3D, transformPoint2D, canFlattenTo2D, flattenTo2D } from 'mtrXYZ';
 
 
-MtrXYZ.Mtx.prototype.transformPathData = function (pts, decimals=8) {
-    let ptsT = MtrXYZ.transformPathData(pts, this.matrix, this.perspectiveOrigin, this.perspective, decimals);
+
+mtrXYZ.Mtx.prototype.transformPathData = function (pts, decimals = 8) {
+    let ptsT = mtrXYZ.transformPathData(pts, this.matrix, this.perspectiveOrigin, this.perspective, decimals);
     this.ptsT = ptsT;
     return ptsT;
 };
-
 
 /**
  * scale pathData2
  */
 function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, y: 0 }, perspective = Infinity, decimals = -1) {
 
-    pathData = Array.isArray(pathData) ? pathData : MtrXYZ.parse(pathData).pathData;
+    pathData = Array.isArray(pathData) ? pathData : mtrXYZ.parse(pathData).pathData;
 
     // normalize
-    pathData = MtrXYZ.convertPathData(pathData, {toAbsolute:true, toLonghands:true});
+    pathData = mtrXYZ.convertPathData(pathData, { toAbsolute: true, toLonghands: true });
 
     // new pathdata
     let pathDataTrans = [];
@@ -1480,155 +1673,167 @@ function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, y: 0 },
 
 
     //check if 3D matrix could be expressed by a 2D one
-    if (is3D) canFlatten = MtrXYZ.canFlattenTo2D(matrix, perspective);
+    if (is3D) canFlatten = mtrXYZ.canFlattenTo2D(matrix, perspective);
     if (canFlatten) {
-        is3D = false; matrix = MtrXYZ.flattenTo2D(matrix, perspective);
+        is3D = false; matrix = mtrXYZ.flattenTo2D(matrix, perspective);
     }
 
     //console.log(matrix);
 
+    /**
+     * detect large arc based on
+     * transformed arc properties
+     */
+    const detectLargeArc = (cnt, p0, ptR, p, sweep) => {
 
-    // convert arcs for 3D transforms
-    if (is3D) {
-        let options = { arcToCubic: true };
-        pathData = MtrXYZ.convertPathData(pathData, options);
-    }
+        const getAngle = (cnt, pt) => Math.atan2(pt.y - cnt.y, pt.x - cnt.x);
 
+        // Identify points based on sweep
+        let ptStart = sweep ? p0 : p;
+        let ptEnd = sweep ? p : p0;
 
-    const transformArc = (p0, values, matrix) => {
-        let [rx, ry, angle, largeArc, sweep, x, y] = values;
+        // Calculate angles
+        let angleStart = getAngle(cnt, ptStart);
+        let angleEnd = getAngle(cnt, ptEnd);
+        let angleMid = getAngle(cnt, ptR);
 
+        // Normalize angles to [0, 2π) for consistent logic
+        angleStart = (angleStart + Math.PI * 2) % (Math.PI * 2);
+        angleEnd = (angleEnd + Math.PI * 2) % (Math.PI * 2);
+        angleMid = (angleMid + Math.PI * 2) % (Math.PI * 2);
 
-        /**
-         * Based on: https://github.com/fontello/svgpath/blob/master/lib/ellipse.js
-         * and fork: https://github.com/kpym/SVGPathy/blob/master/lib/ellipse.js
-         */
-        const transformEllipse2D = (rx, ry, ax, matrix) => {
-            const torad = Math.PI / 180;
-            const epsilon = 1e-7;
-
-
-            // We consider the current ellipse as image of the unit circle
-            // by first scale(rx,ry) and then rotate(ax) ...
-            // So we apply ma =  m x rotate(ax) x scale(rx,ry) to the unit circle.
-            var c = Math.cos(ax * torad),
-                s = Math.sin(ax * torad);
-            var ma = [
-                rx * (matrix.a * c + matrix.c * s),
-                rx * (matrix.b * c + matrix.d * s),
-                ry * (-matrix.a * s + matrix.c * c),
-                ry * (-matrix.b * s + matrix.d * c)
-            ];
-
-            // ma * transpose(ma) = [ J L ]
-            //                      [ L K ]
-            // L is calculated later (if the image is not a circle)
-            var J = ma[0] * ma[0] + ma[2] * ma[2],
-                K = ma[1] * ma[1] + ma[3] * ma[3];
-
-            // the sqrt of the discriminant of the characteristic polynomial of ma * transpose(ma)
-            // this is also the geometric mean of the eigenvalues
-            var D = Math.sqrt(
-                ((ma[0] - ma[3]) * (ma[0] - ma[3]) + (ma[2] + ma[1]) * (ma[2] + ma[1])) *
-                ((ma[0] + ma[3]) * (ma[0] + ma[3]) + (ma[2] - ma[1]) * (ma[2] - ma[1]))
-            );
-
-            // the arithmetic mean of the eigenvalues
-            var JK = (J + K) / 2;
-
-            // check if the image is (almost) a circle
-            if (D <= epsilon) {
-                rx = ry = Math.sqrt(JK);
-                ax = 0;
-                return { rx: rx, ry: ry, ax: ax };
-            }
-
-            // check if ma * transpose(ma) is (almost) diagonal
-            if (Math.abs(D - Math.abs(J - K)) <= epsilon) {
-                rx = Math.sqrt(J);
-                ry = Math.sqrt(K);
-                ax = 0;
-                return { rx: rx, ry: ry, ax: ax };
-            }
-
-            // if it is not a circle, nor diagonal
-            var L = ma[0] * ma[1] + ma[2] * ma[3];
-
-            // {l1,l2} = the two eigen values of ma * transpose(ma)
-            var l1 = JK + D / 2,
-                l2 = JK - D / 2;
-
-            // the x - axis - rotation angle is the argument of the l1 - eigenvector
-            if (Math.abs(L) <= epsilon && Math.abs(l1 - K) <= epsilon) {
-                // if (ax == 90) => ax = 0 and exchange axes
-                ax = 0;
-                rx = Math.sqrt(l2);
-                ry = Math.sqrt(l1);
-                return { rx: rx, ry: ry, ax: ax };
-            }
-
-            ax =
-                Math.atan(Math.abs(L) > Math.abs(l1 - K) ? (l1 - J) / L : L / (l1 - K)) /
-                torad; // the angle in degree
-
-            // if ax > 0 => rx = sqrt(l1), ry = sqrt(l2), else exchange axes and ax += 90
-            if (ax >= 0) {
-                // if ax in [0,90]
-                rx = Math.sqrt(l1);
-                ry = Math.sqrt(l2);
+        // Correct angle ranges using angleMid as reference
+        if (
+            !(angleStart < angleMid && angleMid < angleEnd) &&
+            !(angleStart > angleMid && angleMid > angleEnd)
+        ) {
+            // Adjust angles for proper continuity
+            if (angleEnd < angleStart) {
+                angleEnd += Math.PI * 2;
             } else {
-                // if ax in ]-90,0[ => exchange axes
-                ax += 90;
-                rx = Math.sqrt(l2);
-                ry = Math.sqrt(l1);
+                angleStart += Math.PI * 2;
             }
+        }
 
-            return { rx: rx, ry: ry, ax: ax };
+        // Calculate delta angle
+        let deltaAngle = angleEnd - angleStart;
+
+
+        return {
+            deltaAngle: deltaAngle,
+            largeArc: Math.abs(deltaAngle) > Math.PI ? 1 : 0
         };
+    };
 
+
+
+    /**
+     * transform arc 
+     * command helper
+     */
+    const transformArc = (p0, com, matrix) => {
+        let values = com.values;
+        let [rx0, ry0, angle, largeArc, sweep, x, y] = values;
 
         /**
         * parametrize arc command 
         * to get the actual arc params
         */
-        let arcData = MtrXYZ.svgArcToCenterParam(
-            p0.x,
-            p0.y,
-            values[0],
-            values[1],
-            angle,
-            largeArc,
-            sweep,
-            x,
-            y
-        );
-        ({ rx, ry } = arcData);
-        let { a, b, c, d, e, f } = matrix;
+        let xAxisRotation = angle;
+        let xAxisRotationRad = xAxisRotation * Math.PI / 180;
 
-        let ellipsetr = transformEllipse2D(rx, ry, angle, matrix);
-        let p = MtrXYZ.transformPoint2D({ x: x, y: y }, matrix);
-        //let p = transformPoint2D({ x: x, y: y }, matrix);
+        // final on-path point
+        let p = { x: x, y: y };
 
-        // adjust sweep if flipped
-        let denom = a ** 2 + b ** 2;
-        let scaleX = Math.sqrt(denom);
-        let scaleY = (a * d - c * b) / scaleX;
+        /**
+         * retrieve parametrized properties 
+         * of untransformed arc command
+         */
 
-        let flipX = scaleX < 0 ? true : false;
-        let flipY = scaleY < 0 ? true : false;
+        let arcData = {};
 
+        // arc info are present in pathdata
+        if (com.rx) {
+            arcData = {
+                rx: com.rx,
+                ry: com.ry,
+                cx: com.cx,
+                cy: com.cy,
+                deltaAngle: com.deltaAngle,
+                startAngle: com.startAngle,
+                endAngle: com.endAngle
+            };
+            //console.log('has arc data', arcData, com);
 
-        // adjust sweep
-        if (flipX || flipY) {
-            sweep = sweep === 0 ? 1 : 0;
+        } else {
+            /**
+             * radii as defined in the arc command may not be correct -
+             * we replace them with the properly calculated ones 
+             */
+            arcData = mtrXYZ.svgArcToCenterParam(p0.x, p0.y, rx0, ry0, angle, largeArc, sweep, p.x, p.y);
+            //console.log('arcData new', arcData);
         }
 
+        // extract arc data properties
+        let { rx, ry, cx, cy, startAngle, deltaAngle } = arcData;
+
+
+        // transform starting point
+        p0 = mtrXYZ.transformPoint(p0, matrix, perspectiveOrigin, perspective);
+        p = mtrXYZ.transformPoint(p, matrix, perspectiveOrigin, perspective);
+
+
+
+        // get arc hull
+        let hull = mtrXYZ.getEllipeHull(cx, cy, rx, ry, -xAxisRotationRad);
+
+        // transform hull
+        let hullTrans = mtrXYZ.transformPoints(hull, matrix, perspectiveOrigin, perspective);
+
+        // get hullMatrix
+        let hullMatrix = mtrXYZ.getConvexHullMatrix(hullTrans);
+
+        // get new arc angles and ellipse center
+        let arcPropsTrans = mtrXYZ.getEllipseProperties(hullMatrix);
+        //console.log('arcPropsTrans', arcPropsTrans);
+
+
+        /**
+         * get reference point on ellipe at mid delta angle
+         * to detect sweep and large arc changes
+         */
+        let ptR = mtrXYZ.getPointOnEllipse(cx, cy, rx, ry, (startAngle + deltaAngle * 0.5), xAxisRotationRad);
+
+        // transform reference point
+        ptR = mtrXYZ.transformPoint(ptR, matrix, perspectiveOrigin, perspective);
+
+        // actual transformed ellipse center
+        let cntT = { x: arcPropsTrans.cx, y: arcPropsTrans.cy };
+
+        /**
+         * detect sweep changes based 
+         * on area changes
+         */
+        let areaTrans = mtrXYZ.getPolygonArea([cntT, p0, ptR, p]);
+        sweep = areaTrans < 0 ? 0 : 1;
+
+
+        // get ultimate largeArc value
+        let largeArcnew = detectLargeArc(cntT, p0, ptR, p, sweep);
+        largeArc = largeArcnew.largeArc;
+
+        // update radii and xAxisRotation
+        rx=arcPropsTrans.rx;
+        ry=arcPropsTrans.ry;
+        xAxisRotation = rx!==ry ? arcPropsTrans.angle : 0;
+
+        
         return {
             type: 'A',
             values: [
-                ellipsetr.rx,
-                ellipsetr.ry,
-                ellipsetr.ax,
+                rx,
+                ry,
+                xAxisRotation,
                 largeArc,
                 sweep,
                 p.x,
@@ -1649,7 +1854,9 @@ function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, y: 0 },
         return pathData;
     }
 
-    pathData.forEach((com, i) => {
+    for (let i = 0, len = pathData.length; len && i < len; i++) {
+        let com = pathData[i];
+
         let { type, values } = com;
         let typeRel = type.toLowerCase();
         let comPrev = i > 0 ? pathData[i - 1] : pathData[i];
@@ -1659,22 +1866,22 @@ function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, y: 0 },
             x: comPrevValues[comPrevValuesL - 2],
             y: comPrevValues[comPrevValuesL - 1]
         };
-        ({ x: values[values.length - 2], y: values[values.length - 1] });
+        //let p = { x: values[values.length - 2], y: values[values.length - 1] };
         let comT = { type: type, values: [] };
 
         switch (typeRel) {
             case "a":
-                comT = transformArc(p0, values, matrix);
+                comT = transformArc(p0, com, matrix);
                 break;
 
             default:
                 // all other point based commands
                 if (values.length) {
                     for (let i = 0; i < values.length; i += 2) {
-                        let ptTrans = !is3D ? MtrXYZ.transformPoint2D(
+                        let ptTrans = !is3D ? mtrXYZ.transformPoint2D(
                             { x: com.values[i], y: com.values[i + 1] },
                             matrix
-                        ) : MtrXYZ.transformPoint3D(
+                        ) : mtrXYZ.transformPoint3D(
                             { x: com.values[i], y: com.values[i + 1] },
                             matrix, perspectiveOrigin, perspective
                         );
@@ -1687,16 +1894,21 @@ function transformPathData(pathData, matrix, perspectiveOrigin = { x: 0, y: 0 },
         }
 
         pathDataTrans.push(comT);
-    });
-
+    }
 
     return pathDataTrans;
 
 }
 
 exports.convertPathData = convertPathData;
+exports.getConvexHullMatrix = getConvexHullMatrix;
+exports.getEllipeHull = getEllipeHull;
+exports.getEllipseProperties = getEllipseProperties;
+exports.getPointOnEllipse = getPointOnEllipse;
+exports.getPolygonArea = getPolygonArea;
 exports.parse = parse;
 exports.pathDataToD = pathDataToD;
+exports.renderPoint = renderPoint;
 exports.roundPathData = roundPathData;
 exports.svgArcToCenterParam = svgArcToCenterParam;
 exports.transformPathData = transformPathData;

@@ -2,10 +2,10 @@
 const { abs, acos, atan, atan2, cos, sin, log, max, min, sqrt, tan, PI, pow } = Math;
 
 // get angle helper
-export function getAngle(p1, p2, normalize=false) {
+export function getAngle(p1, p2, normalize = false) {
     let angle = atan2(p2.y - p1.y, p2.x - p1.x);
     // normalize negative angles
-    if(normalize && angle<0) angle+=Math.PI*2
+    if (normalize && angle < 0) angle += Math.PI * 2
     return angle
 }
 
@@ -272,12 +272,15 @@ export function svgArcToCenterParam(x1, y1, rx, ry, xAxisRotation, largeArc, swe
     rx = abs(rx);
     ry = abs(ry);
 
+    /**
+     * rx/ry values may be deceptive 
+     * due to end-point parametisation concept
+     */
 
     // create data object
     let arcData = {
         cx: 0,
         cy: 0,
-        // rx/ry values may be deceptive in arc commands
         rx: rx,
         ry: ry,
         startAngle: 0,
@@ -292,6 +295,8 @@ export function svgArcToCenterParam(x1, y1, rx, ry, xAxisRotation, largeArc, swe
         throw Error("rx and ry can not be 0");
     }
 
+    /*
+    // try to take a shortcut by detecting semicircles
     let shortcut = true
     //console.log('short');
 
@@ -305,7 +310,6 @@ export function svgArcToCenterParam(x1, y1, rx, ry, xAxisRotation, largeArc, swe
         let xMin = Math.min(x1, x2),
             yMin = Math.min(y1, y2),
             PIHalf = Math.PI * 0.5
-
 
         // semi circles
         if (diffX === 0 && diffY || diffY === 0 && diffX) {
@@ -337,6 +341,7 @@ export function svgArcToCenterParam(x1, y1, rx, ry, xAxisRotation, largeArc, swe
             return arcData;
         }
     }
+    */
 
     /**
      * if rx===ry x-axis rotation is ignored
@@ -422,9 +427,6 @@ export function svgArcToCenterParam(x1, y1, rx, ry, xAxisRotation, largeArc, swe
 
 
 export function getPointOnEllipse(cx, cy, rx, ry, angle, ellipseRotation = 0, parametricAngle = true, degrees = false) {
-
-
-    //console.log(cx, cy, rx, ry, angle, ellipseRotation, parametricAngle);
 
     // Convert degrees to radians
     angle = degrees ? (angle * PI) / 180 : angle;
@@ -783,7 +785,7 @@ export function getComThresh(pts, tolerance = 0.01) {
     let w = xMax - xMin
     let h = yMax - yMin
 
-    let dimA = (w + h)/2
+    let dimA = (w + h) / 2
 
     let thresh = dimA * tolerance
     return thresh

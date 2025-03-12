@@ -1,6 +1,6 @@
 import terser from '@rollup/plugin-terser';
 
-const libName = 'MtrXYZ';
+const libName = 'mtrXYZ';
 //const scriptname = 'matrixyz';
 const scriptname = libName;
 

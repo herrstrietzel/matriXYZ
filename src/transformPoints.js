@@ -69,11 +69,11 @@ export function transformPoints(pts, matrix, perspectiveOrigin = { x: 0, y: 0, z
 /**
  * wrapper for single 2D or 3D point
  */
-export function transformPoint(pt, matrix, perspectiveOrigin = { x: 0, y: 0 }, perspective = Infinity, is3D = null, decimals = 8) {
+export function transformPoint(pt, matrix, perspectiveOrigin = { x: 0, y: 0 }, perspective = Infinity, is3D = null, decimals = -1) {
+
 
     //convert array
     pt = Array.isArray(pt) ? { x: pt[0], y: pt[1], z: pt[1] || 0 } : pt;
-
 
     if (is3D === null) {
         is3D = Object.values(matrix).length === 16;
@@ -91,9 +91,11 @@ export function transformPoint(pt, matrix, perspectiveOrigin = { x: 0, y: 0 }, p
 
 
 
+
 export function transformPoint3D(pt, matrix, perspectiveOrigin = { x: 0, y: 0 }, perspective = Infinity, decimals = -1
 ) {
     let x = pt.x, y = pt.y, z = pt.z || 0, w = 1;
+
 
     // Apply the 4x4 transformation matrix (object-based: a–p)
     let newX = matrix.a * x + matrix.e * y + matrix.i * z + matrix.m * w;
@@ -152,10 +154,13 @@ export function transformPoint2D(pt, matrix, decimals = -1) {
     let { x, y } = pt;
     let ptTrans = { x: a * x + c * y + e, y: b * x + d * y + f };
 
+
     if (decimals > -1) {
         ptTrans.x = +(ptTrans.x).toFixed(decimals)
         ptTrans.y = +(ptTrans.y).toFixed(decimals)
     }
+
+    //console.log('decimals', decimals, ptTrans);
     return ptTrans;
 }
 

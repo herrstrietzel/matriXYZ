@@ -2676,6 +2676,7 @@ legend {
   border: none;
 }
 
+input.input-number,
 input[type=number] {
   width: 6ch;
 }

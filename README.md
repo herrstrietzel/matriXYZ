@@ -1,17 +1,24 @@
-# matriXYZ
+[![npm version](https://img.shields.io/npm/v/mtrxyz)](https://www.npmjs.com/package/mtrxyz)
+[![gzipped size](https://img.shields.io/bundlephobia/minzip/mtrxyz)](https://bundlephobia.com/result?p=mtrxyz)
+[![minified size](https://img.shields.io/bundlephobia/min/mtrxyz)](https://bundlephobia.com/result?p=mtrxyz)
+[![license](https://img.shields.io/npm/l/mtrxyz)](https://www.npmjs.com/package/mtrxyz)
+[![CDN](https://img.shields.io/badge/CDN-jsDelivr-E84D3D?style=flat)](https://cdn.jsdelivr.net/npm/mtrxyz@latest/MtrXYZ.min.js)
+[![CDN](https://img.shields.io/badge/CDN-unpkg-blue?style=flat)](https://www.unpkg.com/mtrxyz@latest/dist/MtrXYZ.min.js)
+
+# mtrXYZ
 A helper for 3D and 2D matrix transformations 
 
 ## Usage
 
 ### Install
 ```
-<script src="dist/matriXYZ.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/mtrxyz@latest/dist/MtrXYZ.min.js" defer></script>
 ```
 
 If you need to transform SVG path data please also load the pathdata addon
 
 ```
-<script src="dist/matriXYZ_pathdata.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/mtrxyz@latest/dist/MtrXYZ_pathdata.min.js" defer></script>
 ```
 
 
