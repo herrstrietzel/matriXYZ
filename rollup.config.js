@@ -2,7 +2,7 @@ import terser from '@rollup/plugin-terser';
 
 const libName = 'mtrXYZ';
 //const scriptname = 'matrixyz';
-const scriptname = libName;
+const scriptname = libName.toLowerCase();
 
 export default [
     // Main library (MatriXYZ)
