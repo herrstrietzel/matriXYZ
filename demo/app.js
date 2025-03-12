@@ -47,6 +47,7 @@ cssTransform = "transform:translate(0px, 0px) translateZ(0px)  rotateX(0deg) rot
 //scale3D(0.5, 1, 0.5)
 //skewX(12deg) skewY(33deg)
 
+/*
 //div.style.transform=cssTransform;
 div.style=cssTransform;
 div.classList.add('trans')
@@ -59,7 +60,6 @@ let parsedTransform = mtrXYZ.parseCSSTransform(cssTransform);
 
 let matrix3D = new mtrXYZ.Mtx(cssTransform);
 //console.log( Object.values(matrix3D.matrix).map(val=>{return+val.toFixed(5)}), 'cssMatrix', m );
-
 let transformDecomp = mtrXYZ.qrDecomposeMatrix3D(matrix3D.matrix)
 
 
@@ -71,16 +71,8 @@ div2.classList.add('trans2')
 
 document.body.append(div2)
 let m2 = window.getComputedStyle(div2).transform;
-
-
 //console.log('transformDecomp',m2, transformDecomp);
-
-
-
-
-
-
-
+*/
 
 
 
